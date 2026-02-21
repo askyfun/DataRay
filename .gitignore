@@ -1,0 +1,32 @@
+# Logs and temp files
+**.log
+**.out
+tmp
+.DS_Store
+
+# Binaries
+**/server
+backend/main
+backend/bin/
+
+# Build outputs
+frontend/dist/
+
+# Images (optional, remove if needed)
+*.png
+
+# Sensitive config files
+backend/etc/config.toml
+
+# Dependencies
+node_modules/
+.opencode/
+
+# IDE and tools
+.minimax
+console-errors.txt
+
+# Debug/trace files
+chrome-perf-trace.json
+chrome_perf_trace.json
+

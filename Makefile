@@ -1,0 +1,96 @@
+# DataRay Makefile
+
+# 颜色定义
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+NC := \033[0m # No Color
+
+.PHONY: help install dev dev-frontend dev-backend build build-frontend build-backend docker-up docker-down docker-logs clean
+
+# 默认目标
+help:
+	@echo "$(BLUE)DataRay 开发命令$(NC)"
+	@echo ""
+	@echo "$(GREEN)安装依赖:$NC"
+	@echo "  make install          安装前后端依赖"
+	@echo "  make install-frontend 安装前端依赖"
+	@echo "  make install-backend  安装后端依赖"
+	@echo ""
+	@echo "$(GREEN)开发运行:$NC"
+	@echo "  make dev              启动前后端开发服务器"
+	@echo "  make dev-frontend     启动前端开发服务器"
+	@echo "  make dev-backend      启动后端开发服务器"
+	@echo ""
+	@echo "$(GREEN)构建:$NC"
+	@echo "  make build            构建前后端"
+	@echo "  make build-frontend   构建前端"
+	@echo "  make build-backend    构建后端"
+	@echo ""
+	@echo "$(GREEN)Docker:$NC"
+	@echo "  make docker-up        启动 Docker 容器"
+	@echo "  make docker-down      停止 Docker 容器"
+	@echo "  make docker-logs      查看 Docker 日志"
+	@echo ""
+	@echo "$(GREEN)清理:$NC"
+	@echo "  make clean            清理构建产物"
+
+# 安装所有依赖
+install: install-frontend install-backend
+
+# 安装前端依赖
+install-frontend:
+	@echo "$(YELLOW)安装前端依赖...$(NC)"
+	cd frontend && npm install
+
+# 安装后端依赖
+install-backend:
+	@echo "$(YELLOW)安装后端依赖...$(NC)"
+	cd backend && go mod download
+
+# 开发模式运行
+dev: dev-backend dev-frontend
+	@echo "$(GREEN)前后端已启动，前端: http://localhost:3000，后端: http://localhost:8080$(NC)"
+
+# 前端开发服务器
+dev-frontend:
+	@echo "$(YELLOW)启动前端开发服务器...$(NC)"
+	cd frontend && npm run dev
+
+# 后端开发服务器
+dev-backend:
+	@echo "$(YELLOW)启动后端开发服务器...$(NC)"
+	cd backend && air --build.cmd "go build -o server ./cmd" --build.entrypoint "./server"
+# 	cd backend && go run cmd/main.go -f etc/config.toml
+
+# 构建
+build: build-frontend build-backend
+
+# 构建前端
+build-frontend:
+	@echo "$(YELLOW)构建前端...$(NC)"
+	cd frontend && npm run build
+
+# 构建后端
+build-backend:
+	@echo "$(YELLOW)构建后端...$(NC)"
+	cd backend && go build -o bin/server cmd/main.go
+
+# Docker
+docker-up:
+	@echo "$(YELLOW)启动 Docker 容器...$(NC)"
+	docker-compose up -d
+
+docker-down:
+	@echo "$(YELLOW)停止 Docker 容器...$(NC)"
+	docker-compose down
+
+docker-logs:
+	docker-compose logs -f
+
+# 清理
+clean:
+	@echo "$(YELLOW)清理构建产物...$(NC)"
+	rm -rf frontend/dist
+	rm -rf frontend/node_modules
+	rm -rf backend/bin

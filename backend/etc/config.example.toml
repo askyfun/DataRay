@@ -1,0 +1,11 @@
+Name = "dataray"
+Host = "0.0.0.0"
+Port = 8080
+
+[Database]
+Url = "postgres://user:password@localhost:5432/dataray?sslmode=disable"
+
+# Sentry DSN (empty to disable)
+# Get from: https://sentry.io/settings/<org>/projects/<project>/keys/
+[Sentry]
+Dsn = ""

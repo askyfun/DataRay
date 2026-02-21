@@ -1,0 +1,124 @@
+package datasource
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+)
+
+type clickhouseDriver struct{}
+
+func NewClickHouseDriver() Driver {
+	return &clickhouseDriver{}
+}
+
+func (d *clickhouseDriver) Type() DriverType {
+	return DriverClickHouse
+}
+
+func (d *clickhouseDriver) Connect(ctx context.Context, config ConnectionConfig) (Connection, error) {
+	conn, err := clickhouse.Open(&clickhouse.Options{
+		Addr: []string{fmt.Sprintf("%s:%d", config.Host, config.Port)},
+		Auth: clickhouse.Auth{
+			Database: config.DatabaseName,
+			Username: config.Username,
+			Password: config.Password,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &clickhouseConnection{conn: conn}, nil
+}
+
+func (d *clickhouseDriver) TestConnection(ctx context.Context, config ConnectionConfig) error {
+	conn, err := d.Connect(ctx, config)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Ping(ctx)
+}
+
+type clickhouseConnection struct {
+	conn driver.Conn
+}
+
+func (c *clickhouseConnection) Close() error {
+	return c.conn.Close()
+}
+
+func (c *clickhouseConnection) Ping(ctx context.Context) error {
+	return c.conn.Ping(ctx)
+}
+
+func (c *clickhouseConnection) GetTables(ctx context.Context) ([]TableInfo, error) {
+	rows, err := c.conn.Query(ctx, "SELECT name, comment FROM system.tables WHERE database = currentDatabase() ORDER BY name")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tables []TableInfo
+	for rows.Next() {
+		var name, comment string
+		if err := rows.Scan(&name, &comment); err != nil {
+			return nil, err
+		}
+		tables = append(tables, TableInfo{Name: name, Comment: comment})
+	}
+	return tables, nil
+}
+
+func (c *clickhouseConnection) GetColumns(ctx context.Context, tableName string) ([]ColumnInfo, error) {
+	query := fmt.Sprintf("SELECT name, type, comment FROM system.columns WHERE table = '%s' AND database = currentDatabase() ORDER BY position", tableName)
+	rows, err := c.conn.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var columns []ColumnInfo
+	for rows.Next() {
+		var name, colType, comment string
+		if err := rows.Scan(&name, &colType, &comment); err != nil {
+			return nil, err
+		}
+		columns = append(columns, ColumnInfo{Name: name, Type: colType, Comment: comment})
+	}
+	return columns, nil
+}
+
+func (c *clickhouseConnection) Execute(ctx context.Context, sql string) (*QueryResult, error) {
+	rows, err := c.conn.Query(ctx, sql)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	columns := rows.Columns()
+	var results []map[string]interface{}
+
+	rowScan := make([]interface{}, len(columns))
+	for i := range rowScan {
+		rowScan[i] = new(interface{})
+	}
+
+	for rows.Next() {
+		if err := rows.Scan(rowScan...); err != nil {
+			return nil, err
+		}
+		row := make(map[string]interface{})
+		for i, col := range columns {
+			row[col] = *rowScan[i].(*interface{})
+		}
+		results = append(results, row)
+	}
+
+	return &QueryResult{
+		Columns: columns,
+		Rows:    results,
+	}, nil
+}
