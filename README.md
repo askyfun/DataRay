@@ -23,8 +23,8 @@
 - Vite 构建工具
 
 ### 后端
-- Go 1.21+
-- go-zero API 框架
+- Go 1.26+
+- Gin API 框架
 - uptrace/bun ORM
 - PostgreSQL 12+
 

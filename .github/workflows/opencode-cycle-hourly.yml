@@ -1,0 +1,120 @@
+name: DataRay Hourly Development Cycle
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+
+jobs:
+  pm-agent:
+    name: Project Manager Agent
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run PM Agent
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        with:
+          model: opencode/glm-5-free
+          prompt: |
+            你作为项目经理 agent，分析 docs/*.md 文档，确认产品还有哪些待改进的需求。
+            重点关注：
+            - docs/todo.md 中的待完成任务
+            - docs/architecture.md 中的架构设计
+            - docs/api-spec.md 中的API规范
+            - README.md 中的功能特性
+            
+            输出：将需要改进的需求整理成清晰的列表，更新到 docs/todo.md 中。
+
+  architect-agent:
+    name: Architect Agent
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run Architect Agent
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        with:
+          model: opencode/glm-5-free
+          prompt: |
+            你作为架构师 agent，根据 docs/todo.md 分析产品需求和技术架构上的问题。
+            重点关注：
+            - 后端 Go 代码的架构合理性
+            - 前端 React 代码的架构模式
+            - 性能优化空间
+            - 安全性问题
+            
+            输出：拆分更具体的开发任务，更新到 docs/todo.md 中，包括具体的实现方案。
+
+  developer-agent:
+    name: Developer Agent
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Developer Agent
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        with:
+          model: opencode/glm-5-free
+          prompt: |
+            你作为程序员 agent，根据 docs/todo.md 完成功能的开发。
+            要求：
+            - 优先处理高优先级的任务
+            - 遵循项目现有的代码规范（参考 docs/coding-style.md）
+            - 确保后端 Go 代码有单元测试覆盖
+            - 运行 go test 验证测试通过
+            
+            重要：完成功能后必须运行测试确保覆盖率。
+
+  qa-agent:
+    name: QA Agent
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run QA Agent
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        with:
+          model: opencode/glm-5-free
+          prompt: |
+            你作为测试人员 agent，分析代码中的 bug 和潜在问题。
+            重点检查：
+            - 后端 Go 代码的错误处理
+            - 前端 React 代码的边界条件
+            - API 接口的参数校验
+            - 数据库查询的 SQL 注入风险
+            
+            输出：将发现的 bug 记录到 docs/todo.md 中，使用 [Bug] 标记。
