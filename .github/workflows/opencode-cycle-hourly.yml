@@ -9,7 +9,9 @@ jobs:
     name: Project Manager Agent
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      id-token: write
+      contents: write
+      pull-requests: write
       issues: write
     steps:
       - name: Checkout repository
@@ -35,7 +37,9 @@ jobs:
     name: Architect Agent
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      id-token: write
+      contents: write
+      pull-requests: write
       issues: write
     steps:
       - name: Checkout repository
@@ -61,8 +65,10 @@ jobs:
     name: Developer Agent
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       contents: write
       pull-requests: write
+      issues: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -97,7 +103,9 @@ jobs:
     name: QA Agent
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      id-token: write
+      contents: write
+      pull-requests: write
       issues: write
     steps:
       - name: Checkout repository
