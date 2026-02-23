@@ -3,6 +3,19 @@ name: DataRay Hourly Development Cycle
 on:
   schedule:
     - cron: "0 * * * *"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: '选择要运行的 Agent'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - pm-agent
+          - architect-agent
+          - developer-agent
+          - qa-agent
 
 jobs:
   pm-agent:
@@ -16,11 +29,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run PM Agent
         uses: anomalyco/opencode/github@latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: opencode/glm-5-free
           prompt: |
@@ -31,7 +47,14 @@ jobs:
             - docs/api-spec.md 中的API规范
             - README.md 中的功能特性
             
-            输出：将需要改进的需求整理成清晰的列表，更新到 docs/todo.md 中。
+            输出：
+            1. 将需要改进的需求整理成清晰的列表
+            2. 使用 GitHub CLI 创建对应的 issue，格式如下：
+               - Title: [PM] <需求标题>
+               - Body: 详细描述需求的背景、目标和验收标准
+               - Labels: "enhancement", "pm"
+               
+            如果发现的是 bug，使用 [Bug] 标记并添加 "bug" 标签。
 
   architect-agent:
     name: Architect Agent
@@ -44,11 +67,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Architect Agent
         uses: anomalyco/opencode/github@latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: opencode/glm-5-free
           prompt: |
@@ -59,7 +85,14 @@ jobs:
             - 性能优化空间
             - 安全性问题
             
-            输出：拆分更具体的开发任务，更新到 docs/todo.md 中，包括具体的实现方案。
+            输出：
+            1. 拆分更具体的开发任务，包括具体的实现方案
+            2. 使用 GitHub CLI 创建对应的 issue，格式如下：
+               - Title: [Architect] <任务标题>
+               - Body: 详细描述技术方案、实现步骤和预期影响
+               - Labels: "enhancement", "architect"
+               
+            如果发现安全或性能严重问题，使用 "security" 或 "performance" 标签。
 
   developer-agent:
     name: Developer Agent
@@ -72,6 +105,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -87,17 +122,29 @@ jobs:
         uses: anomalyco/opencode/github@latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: opencode/glm-5-free
           prompt: |
-            你作为程序员 agent，根据 docs/todo.md 完成功能的开发。
-            要求：
-            - 优先处理高优先级的任务
+            你作为程序员 agent，根据 GitHub issues 完成功能的开发。
+            
+            任务流程：
+            1. 使用 gh issue list 扫描状态为 open 的 issues（排除 qa 关闭的）
+            2. 优先处理带有 "high-priority" 标签的 issue
+            3. 按照以下标签优先级处理：bug > security > performance > architect > enhancement > pm
+            
+            开发要求：
             - 遵循项目现有的代码规范（参考 docs/coding-style.md）
             - 确保后端 Go 代码有单元测试覆盖
             - 运行 go test 验证测试通过
             
-            重要：完成功能后必须运行测试确保覆盖率。
+            完成后：
+            1. 提交代码并推送
+            2. 创建 PR，标题格式："Fix: <issue 标题>"
+            3. 在 PR body 中关联 issue（使用 Closes #<issue-number>）
+            4. 使用 gh issue close <issue-number> 关闭 issue 并添加标签 "developer-done"
+            
+            注意：不要修改已经分配给其他人处理的 issue。
 
   qa-agent:
     name: QA Agent
@@ -110,19 +157,44 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Run QA Agent
         uses: anomalyco/opencode/github@latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: opencode/glm-5-free
           prompt: |
-            你作为测试人员 agent，分析代码中的 bug 和潜在问题。
-            重点检查：
+            你作为测试人员 agent，根据已合并的 PR 进行测试验证。
+            
+            任务流程：
+            1. 扫描带有 "developer-done" 标签的 issues（这些是待测试的）
+            2. 对于每个待测试的 issue：
+               - 查看关联的 PR 和代码变更
+               - 分析代码逻辑，运行相关测试
+               - 验证功能是否按预期工作
+            
+            测试重点：
             - 后端 Go 代码的错误处理
             - 前端 React 代码的边界条件
             - API 接口的参数校验
             - 数据库查询的 SQL 注入风险
             
-            输出：将发现的 bug 记录到 docs/todo.md 中，使用 [Bug] 标记。
+            验证结果：
+            - 测试通过：使用 gh issue edit <issue-number> --add-label "qa-passed" 标记
+            - 测试失败：使用 gh issue comment <issue-number> -b "测试失败原因..." 并添加标签 "qa-failed"
+            
+            注意：只有测试完全通过后才能标记为 qa-passed。
