@@ -369,7 +369,6 @@ const DatasourcePage: React.FC = () => {
           <Form.Item
             name="password"
             label={intl.formatMessage({ id: 'datasource.password' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'datasource.pleaseEnterPassword' }) }]}
           >
             <Input.Password placeholder="********" autoComplete="current-password" />
           </Form.Item>

@@ -87,3 +87,69 @@ func NewDriver(driverType DriverType) (Driver, error) {
 		return nil, nil
 	}
 }
+
+
+// PostgreSQL OID 常量
+const (
+	TextOID     int32 = 25  // text
+	VarcharOID  int32 = 1043 // varchar
+	BPCharOID   int32 = 1042 // char
+	ByteaOID    int32 = 17  // bytea
+)
+
+// TextTypeNames MySQL/StarRocks 文本类型名称
+var TextTypeNames = map[string]bool{
+	"CHAR":         true,
+	"VARCHAR":      true,
+	"TINYTEXT":     true,
+	"TEXT":         true,
+	"MEDIUMTEXT":   true,
+	"LONGTEXT":     true,
+	"ENUM":         true,
+	"SET":          true,
+}
+
+// BinaryTypeNames 二进制类型名称
+var BinaryTypeNames = map[string]bool{
+	"TINYBLOB":    true,
+	"BLOB":        true,
+	"MEDIUMBLOB":  true,
+	"LONGBLOB":    true,
+	"BINARY":      true,
+	"VARBINARY":   true,
+	"BIT":         true,
+	"BYTEA":       true,
+}
+
+// convertValue converts []byte to string only for text types
+// This prevents JSON serialization of binary data as base64
+func convertValue(val interface{}, fieldType interface{}) interface{} {
+	byteVal, isByteSlice := val.([]byte)
+	if !isByteSlice {
+		return val
+	}
+
+	// 根据字段类型判断是否为文本类型
+	isTextType := false
+
+	if oid, ok := fieldType.(int32); ok {
+		// PostgreSQL: 使用 OID 判断
+		isTextType = oid == TextOID || oid == VarcharOID || oid == BPCharOID
+	} else if typeName, ok := fieldType.(string); ok {
+		// MySQL/StarRocks: 使用类型名称判断
+		upperType := ""
+		for _, c := range typeName {
+			if c >= 'A' && c <= 'Z' {
+				upperType += string(c)
+			}
+		}
+		isTextType = TextTypeNames[upperType]
+	}
+
+	if isTextType {
+		return string(byteVal)
+	}
+
+	// 二进制类型保持 []byte，JSON 会序列化为 base64
+	return val
+}

@@ -101,4 +101,12 @@ export interface ScatterResponse {
   data: [number, number][];
 }
 
-export type ChartDataResponse = TableResponse | PieResponse | AxisResponse | ScatterResponse | unknown[];
+export interface GeneratedSQL {
+  select: string;
+  count: string;
+}
+
+export interface ChartQueryResponseData {
+  data: ChartDataResponse;
+  generated_sql?: GeneratedSQL;
+}

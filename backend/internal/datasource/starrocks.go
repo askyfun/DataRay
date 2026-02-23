@@ -115,6 +115,12 @@ func (c *starRocksConnection) Execute(ctx context.Context, sql string) (*QueryRe
 		return nil, err
 	}
 
+	// 获取字段类型信息
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, err
+	}
+
 	var results []map[string]interface{}
 	for rows.Next() {
 		values := make([]interface{}, len(columns))
@@ -129,7 +135,8 @@ func (c *starRocksConnection) Execute(ctx context.Context, sql string) (*QueryRe
 
 		row := make(map[string]interface{})
 		for i, col := range columns {
-			row[col] = values[i]
+			// 智能类型转换：只有文本类型才转换为 string
+			row[col] = convertValue(values[i], columnTypes[i].DatabaseTypeName())
 		}
 		results = append(results, row)
 	}

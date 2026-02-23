@@ -112,7 +112,13 @@ func (c *clickhouseConnection) Execute(ctx context.Context, sql string) (*QueryR
 		}
 		row := make(map[string]interface{})
 		for i, col := range columns {
-			row[col] = *rowScan[i].(*interface{})
+			v := *rowScan[i].(*interface{})
+			// ClickHouse: 转换为 string（保守方案，ClickHouse 主要用于 OLAP）
+			if bv, ok := v.([]byte); ok {
+				row[col] = string(bv)
+			} else {
+				row[col] = v
+			}
 		}
 		results = append(results, row)
 	}

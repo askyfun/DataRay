@@ -121,7 +121,12 @@ func (c *postgresqlConnection) Execute(ctx context.Context, sql string) (*QueryR
 		}
 		row := make(map[string]interface{})
 		for i, col := range columns {
-			row[col] = values[i]
+			// PostgreSQL: 转换为 string（保守方案，pgx 类型信息获取复杂）
+			if v, ok := values[i].([]byte); ok {
+				row[col] = string(v)
+			} else {
+				row[col] = values[i]
+			}
 		}
 		results = append(results, row)
 	}

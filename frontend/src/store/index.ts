@@ -584,13 +584,14 @@ export const useStore = create<AppState>((set) => ({
     set({ chartDataLoading: true });
     try {
       const response = await chartsApi.executeChartQuery(request);
-      const responseData = response.data.data;
+      const fullResponse = response.data; // 包含 data + select_sql + count_sql
+      const responseData = fullResponse.data;
 
       if (request.chart_type === 'table' && responseData && 'pagination' in responseData) {
         const tableData = responseData as TableResponse;
         set({
           chartData: tableData.data,
-          chartQueryResponse: responseData,
+          chartQueryResponse: fullResponse as ChartQueryResponse,
           tablePagination: {
             page: tableData.pagination.page,
             pageSize: tableData.pagination.page_size,
@@ -607,7 +608,7 @@ export const useStore = create<AppState>((set) => ({
         }));
         set({
           chartData: transformedData,
-          chartQueryResponse: responseData,
+          chartQueryResponse: fullResponse as ChartQueryResponse,
           chartDataLoading: false,
         });
       } else if (request.chart_type === 'bar' || request.chart_type === 'line' || request.chart_type === 'area') {
@@ -621,7 +622,7 @@ export const useStore = create<AppState>((set) => ({
         });
         set({
           chartData: transformedData,
-          chartQueryResponse: responseData,
+          chartQueryResponse: fullResponse as ChartQueryResponse,
           chartDataLoading: false,
         });
       } else {

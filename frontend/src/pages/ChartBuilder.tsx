@@ -15,6 +15,7 @@ import {
   message,
   Switch,
   Input,
+  Modal,
 } from 'antd';
 import {
   BarChartOutlined,
@@ -27,6 +28,7 @@ import {
   SaveOutlined,
   ReloadOutlined,
   PlayCircleOutlined,
+  CodeOutlined,
 } from '@ant-design/icons';
 import { useStore, ChartField, ChartConfig } from '../store';
 import { ChartQueryAggregation, ChartQueryRequest } from '../api';
@@ -335,6 +337,7 @@ const ChartBuilder: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [selectedDatasetId, setSelectedDatasetId] = useState<number | null>(null);
   const [editingChartId, setEditingChartId] = useState<number | null>(null);
+  const [sqlModalVisible, setSqlModalVisible] = useState(false);
 
   const {
     datasets,
@@ -677,6 +680,14 @@ const ChartBuilder: React.FC = () => {
                 执行查询
               </Button>
             )}
+            {chartData.length > 0 && (
+              <Button
+                icon={<CodeOutlined />}
+                onClick={() => setSqlModalVisible(true)}
+              >
+                查看 SQL
+              </Button>
+            )}
             <Button
               type="primary"
               icon={<SaveOutlined />}
@@ -758,6 +769,44 @@ const ChartBuilder: React.FC = () => {
           </Sider>
         </Layout>
       </Layout>
+      <Modal
+        title="生成的 SQL"
+        open={sqlModalVisible}
+        onCancel={() => setSqlModalVisible(false)}
+        footer={null}
+        width={800}
+      >
+        {chartQueryResponse && (
+          <div>
+            <Text strong>数据查询:</Text>
+            <pre style={{ 
+              background: '#f5f5f5', 
+              padding: 12, 
+              borderRadius: 4, 
+              overflow: 'auto',
+              maxHeight: 300,
+              fontSize: 12
+            }}>
+              {chartQueryResponse.select_sql || '无'}
+            </pre>
+            {chartQueryResponse.count_sql && (
+              <>
+                <Text strong style={{ marginTop: 16, display: 'block' }}>计数查询:</Text>
+                <pre style={{ 
+                  background: '#f5f5f5', 
+                  padding: 12, 
+                  borderRadius: 4, 
+                  overflow: 'auto',
+                  maxHeight: 200,
+                  fontSize: 12
+                }}>
+                  {chartQueryResponse.count_sql}
+                </pre>
+              </>
+            )}
+          </div>
+        )}
+      </Modal>
     </DndContext>
   );
 };

@@ -167,6 +167,16 @@ var starRocksTypeMap = map[string]StandardDataType{
 func (m *StarRocksMapper) ToStandard(sourceType string) (StandardDataType, TypeConfig, error) {
 	sourceType = strings.ToLower(strings.TrimSpace(sourceType))
 
+	// 处理带参数的数值类型 (如 int(11), tinyint(2))
+	// 先提取基础类型
+	if idx := strings.Index(sourceType, "("); idx > 0 {
+		baseType := sourceType[:idx]
+		// 检查基础类型是否在映射表中
+		if stdType, ok := starRocksTypeMap[baseType]; ok {
+			return stdType, TypeConfig{}, nil
+		}
+	}
+
 	// 处理带参数的复杂类型
 	if strings.HasPrefix(sourceType, "array<") {
 		return TypeArray, TypeConfig{}, nil

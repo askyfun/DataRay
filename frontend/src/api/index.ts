@@ -394,7 +394,12 @@ export interface ScatterResponse {
   data: Array<[number, number]>;
 }
 
-export type ChartQueryResponse = TableResponse | PieResponse | AxisResponse | ScatterResponse | any[];
+export interface GeneratedSQL {
+  select_sql?: string;
+  count_sql?: string;
+}
+
+export type ChartQueryResponse = (TableResponse | PieResponse | AxisResponse | ScatterResponse | any[]) & GeneratedSQL;
 
 // Shares API
 export const sharesApi = {
