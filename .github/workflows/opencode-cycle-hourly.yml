@@ -106,42 +106,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.26'
+      - name: Find next issue
+        id: find-issue
+        run: |
+          # 扫描 issues，优先找 high-priority
+          issue=$(gh issue list --state open --label "high-priority" --limit 1 --json number,title,labels -q '.[0]')
+          
+          if [ -z "$issue" ]; then
+            # 没有 high-priority，找 bug
+            issue=$(gh issue list --state open --label "bug" --limit 1 --json number,title,labels -q '.[0]')
+          fi
+          
+          if [ -z "$issue" ]; then
+            # 没有 bug，找 security
+            issue=$(gh issue list --state open --label "security" --limit 1 --json number,title,labels -q '.[0]')
+          fi
+          
+          if [ -z "$issue" ]; then
+            # 没有 security，找其他
+            issue=$(gh issue list --state open --limit 1 --json number,title,labels -q '.[0]')
+          fi
+          
+          if [ -z "$issue" ]; then
+            echo "no_issue=true" >> $GITHUB_OUTPUT
+            echo "没有找到待处理的 issue"
+          else
+            echo "no_issue=false" >> $GITHUB_OUTPUT
+            echo "issue_number=$(echo $issue | jq -r '.number')" >> $GITHUB_OUTPUT
+            echo "issue_title=$(echo $issue | jq -r '.title')" >> $GITHUB_OUTPUT
+            echo "issue_labels=$(echo $issue | jq -r '.labels | map(.name) | join(",")')" >> $GITHUB_OUTPUT
+            echo "找到待处理 issue: $(echo $issue | jq -r '.number') - $(echo $issue | jq -r '.title')"
+          fi
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Run Developer Agent
-        uses: anomalyco/opencode/github@latest
+      - name: Trigger single issue workflow
+        if: steps.find-issue.outputs.no_issue != 'true'
+        run: |
+          gh workflow run opencode-developer-single.yml \
+            -f issue_number=${{ steps.find-issue.outputs.issue_number }} \
+            -f issue_title="${{ steps.find-issue.outputs.issue_title }}" \
+            -f issue_labels="${{ steps.find-issue.outputs.issue_labels }}"
         env:
-          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
-        with:
-          model: minimax-cn-coding-plan/MiniMax-M2.5
-          prompt: |
-            你作为程序员 agent，根据 GitHub issues 完成功能的开发。
-            
-            任务流程：
-            1. 使用 gh issue list 扫描状态为 open 的 issues（排除 qa 关闭的）
-            2. 优先处理带有 "high-priority" 标签的 issue
-            3. 按照以下标签优先级处理：bug > security > performance > architect > enhancement > pm
-            
-            开发要求：
-            - 遵循项目现有的代码规范（参考 docs/coding-style.md）
-            - 确保后端 Go 代码有单元测试覆盖
-            - 运行 go test 验证测试通过
-            
-            完成后：
-            1. 提交代码并推送
-            2. 创建 PR，标题格式："Fix: <issue 标题>"
-            3. 在 PR body 中关联 issue（使用 Closes #<issue-number>）
-            4. 使用 gh issue close <issue-number> 关闭 issue 并添加标签 "developer-done"
-            
-            注意：不要修改已经分配给其他人处理的 issue。
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   qa-agent:
     name: QA Agent
