@@ -19,6 +19,7 @@ on:
 
 jobs:
   pm-agent:
+    if: inputs.target == 'all' || inputs.target == 'pm-agent'
     name: Project Manager Agent
     runs-on: ubuntu-latest
     permissions:
@@ -65,6 +66,7 @@ jobs:
             如果发现的是 bug，使用 [Bug] 标记并添加 "bug" 标签。
 
   architect-agent:
+    if: inputs.target == 'all' || inputs.target == 'architect-agent'
     name: Architect Agent
     runs-on: ubuntu-latest
     permissions:
@@ -103,6 +105,7 @@ jobs:
             如果发现安全或性能严重问题，使用 "security" 或 "performance" 标签。
 
   developer-agent:
+    if: inputs.target == 'all' || inputs.target == 'developer-agent'
     name: Developer Agent
     runs-on: ubuntu-latest
     permissions:
@@ -144,6 +147,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   qa-agent:
+    if: inputs.target == 'all' || inputs.target == 'qa-agent'
     name: QA Agent
     runs-on: ubuntu-latest
     permissions:
