@@ -86,7 +86,6 @@ const DatasetDetailPage: React.FC = () => {
       setDataset(response.data);
     } catch (error: any) {
       message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.failedToLoad' }));
-    } finally {
       setDatasetLoading(false);
     }
   };
@@ -231,7 +230,7 @@ const DatasetDetailPage: React.FC = () => {
           message.success(intl.formatMessage({ id: 'dataset.detail.deleteSuccess' }));
           navigate('/datasets');
         } catch (error: any) {
-          message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.failedToDelete' }));
+          message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.error' }));
         }
       },
     });

@@ -48,6 +48,7 @@ interface ChartCanvasProps {
 }
 
 const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
+const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
   const intl = useIntl();
   const getChartOption = useCallback(() => {
     const { queryConfig } = useStore.getState();
@@ -220,6 +221,7 @@ interface FieldListPanelProps {
 }
 
 const FieldListPanel: React.FC<FieldListPanelProps> = ({ fields, loading }) => {
+const FieldListPanel: React.FC<FieldListPanelProps> = ({ fields, loading }) => {
   const intl = useIntl();
   const dimensions = fields.filter((f) => f.type === 'dimension');
   const metrics = fields.filter((f) => f.type === 'metric');
@@ -336,6 +338,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   );
 };
 
+const ChartBuilder: React.FC = () => {
+  const [searchParams] = useSearchParams();
 const ChartBuilder: React.FC = () => {
   const [searchParams] = useSearchParams();
   const intl = useIntl();
