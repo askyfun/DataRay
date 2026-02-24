@@ -47,9 +47,17 @@ jobs:
             - docs/api-spec.md 中的API规范
             - README.md 中的功能特性
             
+            重要 - 避免重复 Issue：
+            在创建新 issue 之前，必须先使用 gh issue list 检查是否已存在类似的 issue：
+            1. 列出所有 open 状态的 issues
+            2. 对比新需求与现有 issues 的标题和内容
+            3. 如果存在相似需求（关键词匹配或功能相同），跳过创建，直接在已有的 issue 上添加评论说明新需求
+            4. 只有确认没有重复的 issue 才创建新的
+            
             输出：
             1. 将需要改进的需求整理成清晰的列表
-            2. 使用 GitHub CLI 创建对应的 issue，格式如下：
+            2. 对每个需求检查是否已存在重复
+            3. 使用 GitHub CLI 创建对应的 issue（排除重复后），格式如下：
                - Title: [PM] <需求标题>
                - Body: 详细描述需求的背景、目标和验收标准
                - Labels: "enhancement", "pm"
