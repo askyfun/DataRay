@@ -51,7 +51,7 @@ const DatasetEditPage: React.FC = () => {
         const response = await datasourcesApi.getAll();
         setDatasources(response.data || []);
       } catch (error: any) {
-        message.error(error.response?.data?.message || 'Failed to fetch datasources');
+        message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.failedToFetch' }));
       }
     };
     fetchDatasources();
@@ -91,7 +91,7 @@ const DatasetEditPage: React.FC = () => {
         // Fetch columns
         fetchColumns(datasetId);
       } catch (error: any) {
-        message.error(error.response?.data?.message || 'Failed to fetch dataset');
+        message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.failedToFetch' }));
         navigate('/datasets');
         navigate('/datasets');
       } finally {
@@ -118,7 +118,7 @@ const DatasetEditPage: React.FC = () => {
       const response = await datasourcesApi.getTables(datasourceId);
       setTables(response.data || []);
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to fetch tables');
+      message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.failedToFetch' }));
       setTables([]);
     } finally {
       setTablesLoading(false);
@@ -132,7 +132,7 @@ const DatasetEditPage: React.FC = () => {
       const response = await datasetsApi.getColumns(dsId);
       setDatasetColumns(response.data || []);
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to fetch columns');
+      message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.failedToFetch' }));
       setDatasetColumns([]);
     } finally {
       setColumnsLoading(false);

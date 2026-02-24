@@ -315,7 +315,7 @@ const DatasetPage: React.FC = () => {
         formatter: (params: any) => {
           const item = params[0];
           const dist = fieldDistribution.distribution[item.dataIndex];
-          return `${item.name}<br/>计数: ${item.value}<br/>占比: ${dist.percentage}%`;
+          return `${item.name}<br/>${intl.formatMessage({ id: 'chartBuilder.chartTooltip.count' })}: ${item.value}<br/>${intl.formatMessage({ id: 'chartBuilder.chartTooltip.percentage' })}: ${dist.percentage}%`;
         }
       },
       grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
@@ -324,7 +324,7 @@ const DatasetPage: React.FC = () => {
         data: data.map((d: any) => d.name.length > 10 ? d.name.slice(0, 10) + '...' : d.name),
         axisLabel: { interval: 0, rotate: 45 }
       },
-      yAxis: { type: 'value', name: '计数' },
+      yAxis: { type: 'value', name: intl.formatMessage({ id: 'chartBuilder.chartTooltip.count' }) },
       series: [{
         type: 'bar',
         data: data,

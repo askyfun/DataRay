@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useIntl } from 'react-intl';
 import {
   Card,
   Typography,
@@ -37,6 +38,7 @@ const getTypeInfo = (type: string) => {
 const DatasourceDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const intl = useIntl();
   const datasourceId = Number(id);
 
   const { datasources, fetchDatasources } = useStore();
@@ -60,7 +62,7 @@ const DatasourceDetailPage: React.FC = () => {
       const response = await datasourcesApi.getTables(datasourceId);
       setTables(response.data);
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to load tables');
+      message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.failedToLoad' }));
     } finally {
       setTablesLoading(false);
     }
