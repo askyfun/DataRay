@@ -61,15 +61,15 @@ npm run dev
 
 ## 配置
 
-### 后端配置 (backend/etc/config.yaml)
+### 后端配置 (backend/etc/config.toml)
 
-```yaml
-Name: dataray
-Host: 0.0.0.0
-Port: 8080
+```toml
+Name = "dataray"
+Host = "0.0.0.0"
+Port = 8080
 
-Database:
-  Url: postgres://user:password@localhost:5432/dbname?sslmode=disable
+[Database]
+Url = "postgres://user:password@localhost:5432/dbname?sslmode=disable"
 ```
 
 ## API 文档
