@@ -102,13 +102,9 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-      push: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v5
