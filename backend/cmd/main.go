@@ -98,9 +98,9 @@ func main() {
 	// CORS 中间件
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-	c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD")
-	c.Writer.Header().Set("Access-Control-Allow-Headers", "*")
-	c.Writer.Header().Set("Access-Control-Expose-Headers", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "*")
+		c.Writer.Header().Set("Access-Control-Expose-Headers", "*")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
@@ -1701,36 +1701,36 @@ func buildFilterSQL(f Filter) string {
 	field := f.Field
 	switch f.Operator {
 	case "eq":
-		return fmt.Sprintf("%s = '%v'", field, f.Value)
+		return fmt.Sprintf("%s = '%s'", field, query.EscapeValue(f.Value))
 	case "neq":
-		return fmt.Sprintf("%s <> '%v'", field, f.Value)
+		return fmt.Sprintf("%s <> '%s'", field, query.EscapeValue(f.Value))
 	case "gt":
-		return fmt.Sprintf("%s > '%v'", field, f.Value)
+		return fmt.Sprintf("%s > '%s'", field, query.EscapeValue(f.Value))
 	case "gte":
-		return fmt.Sprintf("%s >= '%v'", field, f.Value)
+		return fmt.Sprintf("%s >= '%s'", field, query.EscapeValue(f.Value))
 	case "lt":
-		return fmt.Sprintf("%s < '%v'", field, f.Value)
+		return fmt.Sprintf("%s < '%s'", field, query.EscapeValue(f.Value))
 	case "lte":
-		return fmt.Sprintf("%s <= '%v'", field, f.Value)
+		return fmt.Sprintf("%s <= '%s'", field, query.EscapeValue(f.Value))
 	case "like":
-		return fmt.Sprintf("%s LIKE '%%%v%%'", field, f.Value)
+		return fmt.Sprintf("%s LIKE '%%%s%%'", field, query.EscapeValue(f.Value))
 	case "in":
 		if vals, ok := f.Value.([]interface{}); ok {
 			var strVals []string
 			for _, v := range vals {
-				strVals = append(strVals, fmt.Sprintf("'%v'", v))
+				strVals = append(strVals, fmt.Sprintf("'%s'", query.EscapeValue(v)))
 			}
 			return fmt.Sprintf("%s IN (%s)", field, strings.Join(strVals, ", "))
 		}
-		return fmt.Sprintf("%s IN ('%v')", field, f.Value)
+		return fmt.Sprintf("%s IN ('%s')", field, query.EscapeValue(f.Value))
 	case "between":
-		return fmt.Sprintf("%s BETWEEN '%v' AND '%v'", field, f.Value, f.ValueEnd)
+		return fmt.Sprintf("%s BETWEEN '%s' AND '%s'", field, query.EscapeValue(f.Value), query.EscapeValue(f.ValueEnd))
 	case "isNull":
 		return fmt.Sprintf("%s IS NULL", field)
 	case "isNotNull":
 		return fmt.Sprintf("%s IS NOT NULL", field)
 	default:
-		return fmt.Sprintf("%s = '%v'", field, f.Value)
+		return fmt.Sprintf("%s = '%s'", field, query.EscapeValue(f.Value))
 	}
 }
 
