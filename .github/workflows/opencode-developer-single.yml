@@ -62,6 +62,6 @@ jobs:
             1. 提交代码并推送
             2. 创建 PR，标题格式："Fix: <issue 标题>"
             3. 在 PR body 中关联 issue（使用 Closes #${{ github.event.inputs.issue_number }}）
-            4. 使用 gh issue close ${{ github.event.inputs.issue_number }} 关闭 issue 并添加标签 "developer-done"
+            4. 添加标签 "developer-done"（不要关闭 issue，等待 QA 测试通过后关闭）
             
             注意：只处理这一个 issue，不要扫描其他 issues。

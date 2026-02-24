@@ -119,23 +119,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         id: find-issue
         run: |
-          # 扫描 issues，优先找 high-priority
-          issue=$(gh issue list --state open --label "high-priority" --limit 1 --json number,title,labels -q '.[0]')
-          
-          if [ -z "$issue" ]; then
-            # 没有 high-priority，找 bug
-            issue=$(gh issue list --state open --label "bug" --limit 1 --json number,title,labels -q '.[0]')
-          fi
-          
-          if [ -z "$issue" ]; then
-            # 没有 bug，找 security
-            issue=$(gh issue list --state open --label "security" --limit 1 --json number,title,labels -q '.[0]')
-          fi
-          
-          if [ -z "$issue" ]; then
-            # 没有 security，找其他
-            issue=$(gh issue list --state open --limit 1 --json number,title,labels -q '.[0]')
-          fi
+          # 只扫描带有 problem-confirmed 标签的 issue（需要人工确认后才处理）
+          issue=$(gh issue list --state open --label "problem-confirmed" --limit 1 --json number,title,labels -q '.[0]')
           
           if [ -z "$issue" ]; then
             echo "no_issue=true" >> $GITHUB_OUTPUT
