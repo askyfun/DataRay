@@ -72,19 +72,15 @@ func (e *Executor) Execute(ctx context.Context, req *ChartQueryRequest) (Executo
 		}
 
 		total := len(result.Rows)
-		if req.Pagination.PageSize > 0 && len(result.Rows) >= req.Pagination.PageSize && countSQL != "" {
+		// 总是执行 countSQL 获取正确的总数（不管返回多少条数据）
+		if req.Pagination.PageSize > 0 && countSQL != "" {
 			slog.Debug("executing count query", "sql", countSQL)
 
 			countResult, err := e.conn.Execute(ctx, countSQL)
 			if err == nil && len(countResult.Rows) > 0 {
-				if totalVal, ok := countResult.Rows[0]["_total"]; ok {
-					switch v := totalVal.(type) {
-					case int64:
-						total = int(v)
-					case float64:
-						total = int(v)
-					}
-				}
+				// 有 GROUP BY 时，countResult 返回每个分组的计数
+				// 总数应该是分组的数量（行数），而不是所有计数的总和
+				total = len(countResult.Rows)
 			}
 		}
 
@@ -93,16 +89,8 @@ func (e *Executor) Execute(ctx context.Context, req *ChartQueryRequest) (Executo
 		pageSize := req.Pagination.PageSize
 		totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
 
-		start := (page - 1) * pageSize
-		end := start + pageSize
-		if start > len(rows) {
-			rows = []map[string]any{}
-		} else {
-			if end > len(rows) {
-				end = len(rows)
-			}
-			rows = rows[start:end]
-		}
+		// SQL 已经包含 LIMIT/OFFSET，不需要在 Go 端再次分页
+		// 只需要计算 total 和 totalPages
 
 		columns := []string{}
 

@@ -16,6 +16,7 @@ import {
   Switch,
   Input,
   Modal,
+  Drawer,
 } from 'antd';
 import {
   BarChartOutlined,
@@ -29,6 +30,12 @@ import {
   ReloadOutlined,
   PlayCircleOutlined,
   CodeOutlined,
+  MenuOutlined,
+  LeftOutlined,
+  RightOutlined,
+  FieldBinaryOutlined,
+  FunctionOutlined,
+  FilterOutlined,
 } from '@ant-design/icons';
 import { useStore, ChartField, ChartConfig } from '../store';
 import { ChartQueryAggregation, ChartQueryRequest } from '../api';
@@ -338,6 +345,9 @@ const ChartBuilder: React.FC = () => {
   const [selectedDatasetId, setSelectedDatasetId] = useState<number | null>(null);
   const [editingChartId, setEditingChartId] = useState<number | null>(null);
   const [sqlModalVisible, setSqlModalVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
+  const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
 
   const {
     datasets,
@@ -374,6 +384,15 @@ const ChartBuilder: React.FC = () => {
     setTablePagination,
     chartQueryResponse,
   } = useStore();
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -634,6 +653,262 @@ const ChartBuilder: React.FC = () => {
     return <ChartCanvas config={chartBuilderConfig} data={chartData} loading={chartDataLoading} />;
   };
 
+  const renderHeader = () => {
+    if (isMobile) {
+      return (
+        <Header
+          style={{
+            background: '#fff',
+            padding: '8px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid #f0f0f0',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Text strong style={{ fontSize: 14 }}>数据集:</Text>
+            <Select
+              style={{ width: 160 }}
+              placeholder="选择数据集"
+              value={selectedDatasetId}
+              onChange={handleDatasetChange}
+              allowClear
+              size="small"
+              options={datasets.map((ds) => ({
+                value: ds.id,
+                label: ds.name,
+              }))}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <Button
+              size="small"
+              icon={<FieldBinaryOutlined />}
+              onClick={() => setLeftDrawerOpen(true)}
+              title="字段"
+            />
+            <Button
+              size="small"
+              icon={<PlayCircleOutlined />}
+              onClick={handleExecuteQuery}
+              disabled={!selectedDatasetId}
+              type="primary"
+              title="执行"
+            />
+            <Button
+              size="small"
+              icon={<CodeOutlined />}
+              onClick={() => setSqlModalVisible(true)}
+              disabled={chartData.length === 0}
+              title="SQL"
+            />
+            <Button
+              size="small"
+              icon={<SaveOutlined />}
+              onClick={handleSave}
+              disabled={!selectedDatasetId}
+              type="primary"
+              title="保存"
+            />
+            <Button
+              size="small"
+              icon={<FunctionOutlined />}
+              onClick={() => setRightDrawerOpen(true)}
+              title="配置"
+            />
+          </div>
+        </Header>
+      );
+    }
+
+    return (
+      <Header
+        style={{
+          background: '#fff',
+          padding: '0 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid #f0f0f0',
+        }}
+      >
+        <Space>
+          <Text strong style={{ fontSize: 16 }}>数据集:</Text>
+          <Select
+            style={{ width: 240 }}
+            placeholder="选择数据集"
+            value={selectedDatasetId}
+            onChange={handleDatasetChange}
+            allowClear
+            options={datasets.map((ds) => ({
+              value: ds.id,
+              label: ds.name,
+            }))}
+          />
+        </Space>
+        <Space>
+          <Space>
+            <Text type="secondary">自动查询</Text>
+            <Switch checked={autoQuery} onChange={toggleAutoQuery} size="small" />
+          </Space>
+          {!autoQuery && (
+            <Button
+              type="primary"
+              icon={<PlayCircleOutlined />}
+              onClick={handleExecuteQuery}
+              disabled={!selectedDatasetId}
+            >
+              执行查询
+            </Button>
+          )}
+          {chartData.length > 0 && (
+            <Button
+              icon={<CodeOutlined />}
+              onClick={() => setSqlModalVisible(true)}
+            >
+              查看 SQL
+            </Button>
+          )}
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            onClick={handleSave}
+            disabled={!selectedDatasetId}
+          >
+            {editingChartId ? '更新' : '保存'}
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={handleReset}>
+            重置
+          </Button>
+        </Space>
+      </Header>
+    );
+  };
+
+  const renderContent = () => {
+    if (isMobile) {
+      return (
+        <Content style={{ padding: '12px', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Card title="查询配置" size="small" style={{ flex: '0 0 auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <QueryConfigRow
+                rowType="dimension"
+                fields={getDimensionFields()}
+                availableFields={chartBuilderFields}
+                onRemoveField={removeDimensionField}
+                onAggregationChange={setMetricAggregation}
+                onAddField={(field) => addDimensionField(field)}
+              />
+
+              <QueryConfigRow
+                rowType="metric"
+                fields={getMetricFields()}
+                availableFields={chartBuilderFields}
+                aggregations={metricAggregations}
+                aliases={metricAliases}
+                onRemoveField={removeMetricField}
+                onAggregationChange={setMetricAggregation}
+                onAddField={(field) => addMetricField(field)}
+                onOpenSettings={(field) => {
+                  const alias = prompt('输入字段别名:', field.name);
+                  if (alias !== null) {
+                    setMetricAlias(field.id, alias);
+                  }
+                }}
+              />
+
+              <FilterBuilder
+                fields={chartBuilderFields}
+                filters={queryConfig.filters}
+                onAdd={() => addFilter()}
+                onRemove={removeFilter}
+                onUpdate={updateFilter}
+              />
+            </div>
+          </Card>
+
+          <Card title="预览" size="small" style={{ flex: 1, minHeight: 300 }}>
+            <div style={{ height: 'calc(100vh - 400px)', minHeight: 250 }}>
+              {renderPreview()}
+            </div>
+          </Card>
+        </Content>
+      );
+    }
+
+    return (
+      <Layout>
+        <Sider
+          width={180}
+          style={{ background: '#fff', padding: '12px', borderRight: '1px solid #f0f0f0' }}
+        >
+          <Card title="可用字段" size="small">
+            <FieldListPanel fields={chartBuilderFields} loading={chartBuilderFieldsLoading} />
+          </Card>
+        </Sider>
+
+        <Content style={{ padding: '12px', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Card title="查询配置" size="small" style={{ flex: '0 0 auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <QueryConfigRow
+                rowType="dimension"
+                fields={getDimensionFields()}
+                availableFields={chartBuilderFields}
+                onRemoveField={removeDimensionField}
+                onAggregationChange={setMetricAggregation}
+                onAddField={(field) => addDimensionField(field)}
+              />
+
+              <QueryConfigRow
+                rowType="metric"
+                fields={getMetricFields()}
+                availableFields={chartBuilderFields}
+                aggregations={metricAggregations}
+                aliases={metricAliases}
+                onRemoveField={removeMetricField}
+                onAggregationChange={setMetricAggregation}
+                onAddField={(field) => addMetricField(field)}
+                onOpenSettings={(field) => {
+                  const alias = prompt('输入字段别名:', field.name);
+                  if (alias !== null) {
+                    setMetricAlias(field.id, alias);
+                  }
+                }}
+              />
+
+              <FilterBuilder
+                fields={chartBuilderFields}
+                filters={queryConfig.filters}
+                onAdd={() => addFilter()}
+                onRemove={removeFilter}
+                onUpdate={updateFilter}
+              />
+            </div>
+          </Card>
+
+          <Card title="预览" size="small" style={{ flex: 1, minHeight: 400 }}>
+            <div style={{ height: 'calc(100vh - 480px)', minHeight: 300 }}>
+              {renderPreview()}
+            </div>
+          </Card>
+        </Content>
+
+        <Sider
+          width={260}
+          style={{ background: '#fff', padding: '12px', borderLeft: '1px solid #f0f0f0' }}
+        >
+          <ConfigPanel
+            config={chartBuilderConfig}
+            onConfigChange={setChartBuilderConfig}
+          />
+        </Sider>
+      </Layout>
+    );
+  };
+
   return (
     <DndContext
       sensors={sensors}
@@ -641,133 +916,34 @@ const ChartBuilder: React.FC = () => {
       onDragEnd={handleDragEnd}
     >
       <Layout style={{ minHeight: 'calc(100vh - 120px)' }}>
-        <Header
-          style={{
-            background: '#fff',
-            padding: '0 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: '1px solid #f0f0f0',
-          }}
+        {renderHeader()}
+
+        {renderContent()}
+
+        <Drawer
+          title="可用字段"
+          placement="left"
+          onClose={() => setLeftDrawerOpen(false)}
+          open={leftDrawerOpen}
+          width={300}
         >
-          <Space>
-            <Text strong style={{ fontSize: 16 }}>数据集:</Text>
-            <Select
-              style={{ width: 240 }}
-              placeholder="选择数据集"
-              value={selectedDatasetId}
-              onChange={handleDatasetChange}
-              allowClear
-              options={datasets.map((ds) => ({
-                value: ds.id,
-                label: ds.name,
-              }))}
-            />
-          </Space>
-          <Space>
-            <Space>
-              <Text type="secondary">自动查询</Text>
-              <Switch checked={autoQuery} onChange={toggleAutoQuery} size="small" />
-            </Space>
-            {!autoQuery && (
-              <Button
-                type="primary"
-                icon={<PlayCircleOutlined />}
-                onClick={handleExecuteQuery}
-                disabled={!selectedDatasetId}
-              >
-                执行查询
-              </Button>
-            )}
-            {chartData.length > 0 && (
-              <Button
-                icon={<CodeOutlined />}
-                onClick={() => setSqlModalVisible(true)}
-              >
-                查看 SQL
-              </Button>
-            )}
-            <Button
-              type="primary"
-              icon={<SaveOutlined />}
-              onClick={handleSave}
-              disabled={!selectedDatasetId}
-            >
-              {editingChartId ? '更新' : '保存'}
-            </Button>
-            <Button icon={<ReloadOutlined />} onClick={handleReset}>
-              重置
-            </Button>
-          </Space>
-        </Header>
+          <Card title="字段列表" size="small">
+            <FieldListPanel fields={chartBuilderFields} loading={chartBuilderFieldsLoading} />
+          </Card>
+        </Drawer>
 
-        <Layout>
-          <Sider
-            width={180}
-            style={{ background: '#fff', padding: '12px', borderRight: '1px solid #f0f0f0' }}
-          >
-            <Card title="可用字段" size="small">
-              <FieldListPanel fields={chartBuilderFields} loading={chartBuilderFieldsLoading} />
-            </Card>
-          </Sider>
-
-          <Content style={{ padding: '12px', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Card title="查询配置" size="small" style={{ flex: '0 0 auto' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <QueryConfigRow
-                  rowType="dimension"
-                  fields={getDimensionFields()}
-                  availableFields={chartBuilderFields}
-                  onRemoveField={removeDimensionField}
-                  onAggregationChange={setMetricAggregation}
-                  onAddField={(field) => addDimensionField(field)}
-                />
-
-                <QueryConfigRow
-                  rowType="metric"
-                  fields={getMetricFields()}
-                  availableFields={chartBuilderFields}
-                  aggregations={metricAggregations}
-                  aliases={metricAliases}
-                  onRemoveField={removeMetricField}
-                  onAggregationChange={setMetricAggregation}
-                  onAddField={(field) => addMetricField(field)}
-                  onOpenSettings={(field) => {
-                    const alias = prompt('输入字段别名:', field.name);
-                    if (alias !== null) {
-                      setMetricAlias(field.id, alias);
-                    }
-                  }}
-                />
-
-                <FilterBuilder
-                  fields={chartBuilderFields}
-                  filters={queryConfig.filters}
-                  onAdd={() => addFilter()}
-                  onRemove={removeFilter}
-                  onUpdate={updateFilter}
-                />
-              </div>
-            </Card>
-
-            <Card title="预览" size="small" style={{ flex: 1, minHeight: 400 }}>
-              <div style={{ height: 'calc(100vh - 480px)', minHeight: 300 }}>
-                {renderPreview()}
-              </div>
-            </Card>
-          </Content>
-
-          <Sider
-            width={260}
-            style={{ background: '#fff', padding: '12px', borderLeft: '1px solid #f0f0f0' }}
-          >
-            <ConfigPanel
-              config={chartBuilderConfig}
-              onConfigChange={setChartBuilderConfig}
-            />
-          </Sider>
-        </Layout>
+        <Drawer
+          title="图表配置"
+          placement="right"
+          onClose={() => setRightDrawerOpen(false)}
+          open={rightDrawerOpen}
+          width={300}
+        >
+          <ConfigPanel
+            config={chartBuilderConfig}
+            onConfigChange={setChartBuilderConfig}
+          />
+        </Drawer>
       </Layout>
       <Modal
         title="生成的 SQL"

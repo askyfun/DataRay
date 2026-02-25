@@ -49,3 +49,96 @@ body {
 .table-striped td:nth-child(odd) {
   background-color: #fafafa;
 }
+
+/* Responsive styles for mobile */
+@media (max-width: 767px) {
+  body {
+    font-size: 14px;
+  }
+  
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+  
+  .ant-card {
+    margin-bottom: 12px;
+  }
+  
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
+  
+  .ant-btn {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  
+  .ant-input,
+  .ant-select-selector {
+    height: 32px;
+  }
+  
+  .ant-modal-content {
+    margin: 12px;
+  }
+  
+  .ant-modal {
+    max-width: calc(100vw - 24px);
+  }
+  
+  .ant-drawer-content {
+    overflow-y: auto;
+  }
+  
+  .ant-layout-content {
+    padding: 12px;
+  }
+  
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    padding: 8px !important;
+    font-size: 12px;
+  }
+  
+  .ant-pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .ant-menu-item {
+    height: 44px;
+    line-height: 44px;
+  }
+}
+
+@media (max-width: 575px) {
+  .ant-btn {
+    height: 28px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+  
+  .ant-card-head-title {
+    font-size: 14px;
+  }
+  
+  .ant-typography {
+    font-size: 13px;
+  }
+  
+  .ant-form-item {
+    flex-direction: column;
+  }
+  
+  .ant-form-item-label > label {
+    margin-bottom: 4px;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .ant-modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}

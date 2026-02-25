@@ -9,7 +9,7 @@ const messages: Record<LocaleType, Record<string, string>> = {
   'zh-CN': {
     'nav.datasources': '数据源',
     'nav.datasets': '数据集',
-    'nav.chartBuilder': '图表构建',
+    'nav.chartBuilder': '图表分析',
     'nav.charts': '图表',
     'nav.shares': '分享',
     'common.add': '新增',

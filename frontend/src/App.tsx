@@ -1,7 +1,7 @@
 import { useIntl } from 'react-intl'
-import { useEffect } from 'react'
-import { Routes, Route, Link } from 'react-router-dom'
-import { Layout, Menu, Typography, Select, Space } from 'antd'
+import { useEffect, useState } from 'react'
+import { Routes, Route, Link, useLocation } from 'react-router-dom'
+import { Layout, Menu, Typography, Select, Space, Drawer, Button } from 'antd'
 import {
   DatabaseOutlined,
   AppstoreOutlined,
@@ -9,6 +9,7 @@ import {
   ShareAltOutlined,
   BuildOutlined,
   GlobalOutlined,
+  MenuOutlined,
 } from '@ant-design/icons'
 import DatasourcePage from './pages/Datasource'
 import DatasourceDetailPage from './pages/DatasourceDetail'
@@ -27,12 +28,33 @@ const { Title } = Typography
 const App: React.FC = () => {
   const intl = useIntl()
   const { locale, setLocale } = useLocale()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const location = useLocation()
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
 
   useEffect(() => {
     document.title = 'DataRay'
   }, [])
 
   const menuItems = [
+    {
+      key: '/chart-builder',
+      icon: <BuildOutlined />,
+      label: <Link to="/chart-builder">{intl.formatMessage({ id: 'nav.chartBuilder' })}</Link>,
+    },
     {
       key: '/datasources',
       icon: <DatabaseOutlined />,
@@ -42,11 +64,6 @@ const App: React.FC = () => {
       key: '/datasets',
       icon: <AppstoreOutlined />,
       label: <Link to="/datasets">{intl.formatMessage({ id: 'nav.datasets' })}</Link>,
-    },
-    {
-      key: '/chart-builder',
-      icon: <BuildOutlined />,
-      label: <Link to="/chart-builder">{intl.formatMessage({ id: 'nav.chartBuilder' })}</Link>,
     },
     {
       key: '/charts',
@@ -63,33 +80,97 @@ const App: React.FC = () => {
   return (
     <Layout className="layout" style={{ minHeight: '100vh' }}>
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      <Header style={{ display: 'flex', alignItems: 'center', padding: '0 16px', height: 48, lineHeight: '48px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginRight: 32 }}>
+      <Header style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        padding: isMobile ? '0 12px' : '0 16px', 
+        height: 48, 
+        lineHeight: '48px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+      }}>
+        {isMobile && (
+          <Button
+            type="text"
+            icon={<MenuOutlined style={{ color: 'white', fontSize: 18 }} />}
+            onClick={() => setMobileMenuOpen(true)}
+            style={{ marginRight: 12 }}
+            aria-label="打开菜单"
+          />
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', marginRight: isMobile ? 8 : 32 }}>
           <div className="demo-logo" />
-          <Title level={4} style={{ color: 'white', margin: 0, marginLeft: 12 }}>
-            DataRay
-          </Title>
+          {!isMobile && (
+            <Title level={4} style={{ color: 'white', margin: 0, marginLeft: 12 }}>
+              DataRay
+            </Title>
+          )}
         </div>
+        {!isMobile ? (
+          <>
+            <Menu
+              mode="horizontal"
+              defaultSelectedKeys={['/datasources']}
+              selectedKeys={[location.pathname]}
+              items={menuItems}
+              style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', lineHeight: '46px' }}
+              theme="dark"
+            />
+            <Space style={{ marginLeft: 16 }}>
+              <GlobalOutlined style={{ color: 'white' }} />
+              <Select
+                value={locale}
+                onChange={(value) => setLocale(value)}
+                style={{ width: 100 }}
+                options={[
+                  { value: 'zh-CN', label: '中文' },
+                  { value: 'en-US', label: 'English' },
+                ]}
+              />
+            </Space>
+          </>
+        ) : null}
+      </Header>
+      
+      {/* Mobile Menu Drawer */}
+      <Drawer
+        title={
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div className="demo-logo" />
+            <span style={{ color: 'white', marginLeft: 12, fontWeight: 'bold' }}>DataRay</span>
+          </div>
+        }
+        placement="left"
+        onClose={() => setMobileMenuOpen(false)}
+        open={mobileMenuOpen}
+        width={280}
+        bodyStyle={{ padding: 0 }}
+        headerStyle={{ background: '#001529' }}
+      >
         <Menu
-          mode="horizontal"
-          defaultSelectedKeys={['/datasources']}
+          mode="inline"
+          selectedKeys={[location.pathname]}
           items={menuItems}
-          style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', lineHeight: '46px' }}
+          style={{ border: 'none' }}
           theme="dark"
         />
-        <Space style={{ marginLeft: 16 }}>
-          <GlobalOutlined style={{ color: 'white' }} />
-          <Select
-            value={locale}
-            onChange={(value) => setLocale(value)}
-            style={{ width: 100 }}
-            options={[
-              { value: 'zh-CN', label: '中文' },
-              { value: 'en-US', label: 'English' },
-            ]}
-          />
-        </Space>
-      </Header>
+        <div style={{ padding: '16px', borderTop: '1px solid #303030' }}>
+          <Space>
+            <GlobalOutlined />
+            <Select
+              value={locale}
+              onChange={(value) => setLocale(value)}
+              style={{ width: 100 }}
+              options={[
+                { value: 'zh-CN', label: '中文' },
+                { value: 'en-US', label: 'English' },
+              ]}
+            />
+          </Space>
+        </div>
+      </Drawer>
+
       <Layout>
         <Layout style={{ padding: '0' }}>
           <Content id="main-content" style={{ background: '#fff', minHeight: 280 }}>
