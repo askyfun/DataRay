@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useIntl } from 'react-intl';
 import ReactECharts from 'echarts-for-react';
 import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import {
@@ -54,6 +55,8 @@ interface ChartCanvasProps {
 }
 
 const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
+const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
+  const intl = useIntl();
   const getChartOption = useCallback(() => {
     const { queryConfig } = useStore.getState();
     const dimensionFields = queryConfig.dimensionGroups.flatMap(g => g.fields);
@@ -194,7 +197,7 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
       <div style={{ textAlign: 'center', padding: '100px 0' }}>
         <Spin size="large" />
         <div style={{ marginTop: 16 }}>
-          <Text type="secondary">加载图表数据中...</Text>
+          <Text type="secondary">{intl.formatMessage({ id: 'chartBuilder.loadingChart' })}</Text>
         </div>
       </div>
     );
@@ -203,7 +206,7 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
   if (!chartOption) {
     return (
       <Empty
-        description="请配置维度和指标以生成图表"
+        description={intl.formatMessage({ id: 'chartBuilder.configureChart' })}
         image={Empty.PRESENTED_IMAGE_SIMPLE}
         style={{ padding: '100px 0' }}
       />
@@ -225,6 +228,8 @@ interface FieldListPanelProps {
 }
 
 const FieldListPanel: React.FC<FieldListPanelProps> = ({ fields, loading }) => {
+const FieldListPanel: React.FC<FieldListPanelProps> = ({ fields, loading }) => {
+  const intl = useIntl();
   const dimensions = fields.filter((f) => f.type === 'dimension');
   const metrics = fields.filter((f) => f.type === 'metric');
 
@@ -233,7 +238,7 @@ const FieldListPanel: React.FC<FieldListPanelProps> = ({ fields, loading }) => {
       <div style={{ textAlign: 'center', padding: '40px 0' }}>
         <Spin />
         <div style={{ marginTop: 8 }}>
-          <Text type="secondary">加载字段中...</Text>
+          <Text type="secondary">{intl.formatMessage({ id: 'chartBuilder.loadingFields' })}</Text>
         </div>
       </div>
     );
@@ -242,7 +247,7 @@ const FieldListPanel: React.FC<FieldListPanelProps> = ({ fields, loading }) => {
   if (fields.length === 0) {
     return (
       <Empty
-        description="请先选择数据集"
+        description={intl.formatMessage({ id: 'chartBuilder.pleaseSelectDataset' })}
         image={Empty.PRESENTED_IMAGE_SIMPLE}
       />
     );
@@ -342,6 +347,9 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
 
 const ChartBuilder: React.FC = () => {
   const [searchParams] = useSearchParams();
+const ChartBuilder: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const intl = useIntl();
   const [selectedDatasetId, setSelectedDatasetId] = useState<number | null>(null);
   const [editingChartId, setEditingChartId] = useState<number | null>(null);
   const [sqlModalVisible, setSqlModalVisible] = useState(false);
@@ -419,13 +427,13 @@ const ChartBuilder: React.FC = () => {
       if (field.type === 'dimension') {
         addDimensionField(field);
       } else {
-        message.warning('请将指标拖入指标区域');
+        message.warning(intl.formatMessage({ id: 'chartBuilder.dragMetricHint' }));
       }
     } else if (dropZoneType === 'metric') {
       if (field.type === 'metric') {
         addMetricField(field);
       } else {
-        message.warning('请将维度拖入维度区域');
+        message.warning(intl.formatMessage({ id: 'chartBuilder.dragDimensionHint' }));
       }
     } else if (dropZoneType === 'filter') {
       addFilter({
@@ -592,7 +600,7 @@ const ChartBuilder: React.FC = () => {
 
   const handleSave = async () => {
     if (!selectedDatasetId) {
-      message.error('请先选择数据集');
+      message.error(intl.formatMessage({ id: 'chartBuilder.pleaseSelectDataset' }));
       return;
     }
 

@@ -247,6 +247,10 @@ const messages: Record<LocaleType, Record<string, string>> = {
     'chartBuilder.updateChart': '更新图表',
     'chartBuilder.resetConfig': '重置配置',
     'chartBuilder.pleaseSelectDatasetFirst': '请先选择数据集',
+    'chartBuilder.dragMetricHint': '请将指标拖入指标区域',
+    'chartBuilder.dragDimensionHint': '请将维度拖入维度区域',
+    'chartBuilder.chartTooltip.count': '计数',
+    'chartBuilder.chartTooltip.percentage': '占比',
     'chartBuilder.pleaseConfigAxes': '请配置 X 轴和 Y 轴字段',
     'chartBuilder.setAsXAxis': '已设置 "{name}" 为 X 轴维度',
     'chartBuilder.xAxisAlreadySet': 'X 轴已设置为 "{name}"',
@@ -303,6 +307,7 @@ const messages: Record<LocaleType, Record<string, string>> = {
     'shareView.notFound': '分享不存在',
     'shareView.chartNotFound': '未找到相关图表',
     'home.welcome': '欢迎使用 DataRay',
+>>>>>>> origin/master
   },
   'en-US': {
     'nav.datasources': 'Data Sources',
@@ -543,6 +548,10 @@ const messages: Record<LocaleType, Record<string, string>> = {
     'chartBuilder.updateChart': 'Update Chart',
     'chartBuilder.resetConfig': 'Reset',
     'chartBuilder.pleaseSelectDatasetFirst': 'Please select a dataset first',
+    'chartBuilder.dragMetricHint': 'Please drag metrics to the metrics area',
+    'chartBuilder.dragDimensionHint': 'Please drag dimensions to the dimensions area',
+    'chartBuilder.chartTooltip.count': 'Count',
+    'chartBuilder.chartTooltip.percentage': 'Percentage',
     'chartBuilder.pleaseConfigAxes': 'Please configure X-axis and Y-axis fields',
     'chartBuilder.setAsXAxis': 'Set "{name}" as X-axis dimension',
     'chartBuilder.xAxisAlreadySet': 'X-axis already set to "{name}"',
@@ -599,6 +608,7 @@ const messages: Record<LocaleType, Record<string, string>> = {
     'shareView.notFound': 'Share not found',
     'shareView.chartNotFound': 'Related chart not found',
     'home.welcome': 'Welcome to DataRay',
+>>>>>>> origin/master
   },
 }
 

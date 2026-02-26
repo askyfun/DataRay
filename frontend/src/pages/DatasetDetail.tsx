@@ -37,10 +37,10 @@ import type { DatasetColumn } from '../api';
 
 const { Title, Text, Paragraph } = Typography;
 
-const getQueryTypeInfo = (type: string) => {
+const getQueryTypeInfo = (type: string, intl: { formatMessage: (opts: { id: string }) => string }) => {
   const typeMap: Record<string, { label: string; color: string }> = {
-    table: { label: 'Table', color: 'blue' },
-    sql: { label: 'SQL', color: 'green' },
+    table: { label: intl.formatMessage({ id: 'dataset.queryType.table' }), color: 'blue' },
+    sql: { label: intl.formatMessage({ id: 'dataset.customSql' }), color: 'green' },
   };
   return typeMap[type] || { label: type, color: 'blue' };
 };
@@ -85,8 +85,7 @@ const DatasetDetailPage: React.FC = () => {
       const response = await datasetsApi.getById(datasetId);
       setDataset(response.data);
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to load dataset');
-    } finally {
+      message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.failedToLoad' }));
       setDatasetLoading(false);
     }
   };
@@ -103,7 +102,7 @@ const DatasetDetailPage: React.FC = () => {
       const response = await datasetsApi.getColumns(datasetId);
       setColumns(response.data);
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to load columns');
+      message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.failedToLoad' }));
     } finally {
       setColumnsLoading(false);
     }
@@ -121,7 +120,7 @@ const DatasetDetailPage: React.FC = () => {
       const response = await datasetsApi.getPreview(datasetId);
       setPreview(response.data);
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to load preview');
+      message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.failedToLoad' }));
     } finally {
       setPreviewLoading(false);
     }
@@ -231,7 +230,7 @@ const DatasetDetailPage: React.FC = () => {
           message.success(intl.formatMessage({ id: 'dataset.detail.deleteSuccess' }));
           navigate('/datasets');
         } catch (error: any) {
-          message.error(error.response?.data?.message || 'Failed to delete dataset');
+          message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.error' }));
         }
       },
     });
@@ -396,8 +395,8 @@ const DatasetDetailPage: React.FC = () => {
               <Title level={3} style={{ margin: 0 }}>
                 {displayDataset?.name}
               </Title>
-              <Tag color={getQueryTypeInfo(displayDataset?.query_type).color}>
-                {getQueryTypeInfo(displayDataset?.query_type).label}
+              <Tag color={getQueryTypeInfo(displayDataset?.query_type, intl).color}>
+                {getQueryTypeInfo(displayDataset?.query_type, intl).label}
               </Tag>
             </Space>
             {displayDataset?.description && (
@@ -437,7 +436,7 @@ const DatasetDetailPage: React.FC = () => {
             </Space>
           </Descriptions.Item>
           <Descriptions.Item label={intl.formatMessage({ id: 'dataset.detail.queryType' })}>
-            {getQueryTypeInfo(displayDataset?.query_type).label}
+            {getQueryTypeInfo(displayDataset?.query_type, intl).label}
           </Descriptions.Item>
           <Descriptions.Item label={intl.formatMessage({ id: 'dataset.detail.source' })} span={2}>
             {displayDataset?.query_type === 'table' ? (
