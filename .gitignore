@@ -30,3 +30,9 @@ console-errors.txt
 chrome-perf-trace.json
 chrome_perf_trace.json
 
+# Debug/trace files
+.chrome-perf-trace.json
+.chrome_perf_trace.json
+
+# Worktrees
+.worktrees/
