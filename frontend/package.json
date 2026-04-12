@@ -14,7 +14,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@sentry/react": "^10.39.0",
     "antd": "^5.22.5",
-    "axios": "^1.7.9",
+    "axios": "^1.15.0",
     "echarts": "^5.5.1",
     "echarts-for-react": "latest",
     "react": "^18.3.1",
