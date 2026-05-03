@@ -327,8 +327,8 @@ const DatasetEditPage: React.FC = () => {
                   disabled={!selectedDatasourceId || tablesLoading}
                 >
                   {tables.map((table) => (
-                    <Select.Option key={table.Name} value={table.Name}>
-                      {table.Name}
+                    <Select.Option key={table.name} value={table.name}>
+                      {table.name}
                     </Select.Option>
                   ))}
                 </Select>

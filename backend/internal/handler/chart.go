@@ -80,6 +80,7 @@ func (h *ChartHandler) Update(c *gin.Context) {
 
 	var req struct {
 		Name      string `json:"name"`
+		DatasetID int    `json:"dataset_id"`
 		ChartType string `json:"chart_type"`
 		Config    string `json:"config"`
 	}
@@ -91,6 +92,7 @@ func (h *ChartHandler) Update(c *gin.Context) {
 	chart := &entity.Chart{
 		ID:        id,
 		Name:      req.Name,
+		DatasetID: req.DatasetID,
 		ChartType: req.ChartType,
 		Config:    req.Config,
 	}

@@ -81,8 +81,8 @@ const DatasourceDetailPage: React.FC = () => {
   const columnsColumns = [
     {
       title: 'Name',
-      dataIndex: 'Name',
-      key: 'Name',
+      dataIndex: 'name',
+      key: 'name',
       width: 200,
       render: (text: string) => (
         <Space>
@@ -93,23 +93,23 @@ const DatasourceDetailPage: React.FC = () => {
     },
     {
       title: 'Type',
-      dataIndex: 'Type',
-      key: 'Type',
+      dataIndex: 'data_type',
+      key: 'data_type',
       width: 150,
       render: (text: string) => <Tag color="blue">{text}</Tag>,
     },
     {
       title: 'Comment',
-      dataIndex: 'Comment',
-      key: 'Comment',
+      dataIndex: 'comment',
+      key: 'comment',
     },
   ];
 
   const tableColumns = [
     {
       title: 'Table Name',
-      dataIndex: 'Name',
-      key: 'Name',
+      dataIndex: 'name',
+      key: 'name',
       render: (text: string) => (
         <Space>
           <TableOutlined />
@@ -119,8 +119,8 @@ const DatasourceDetailPage: React.FC = () => {
     },
     {
       title: 'Comment',
-      dataIndex: 'Comment',
-      key: 'Comment',
+      dataIndex: 'comment',
+      key: 'comment',
     },
   ];
 
@@ -186,12 +186,12 @@ const DatasourceDetailPage: React.FC = () => {
           <Table
             columns={tableColumns}
             dataSource={tables}
-            rowKey="Name"
+            rowKey="name"
             loading={tablesLoading}
             expandable={{
               expandedRowRender: (record: TableInfo) => {
-                const tableColumns = columnsCache[record.Name] || [];
-                const isLoading = loadingColumns[record.Name];
+                const tableColumns = columnsCache[record.name] || [];
+                const isLoading = loadingColumns[record.name];
 
                 if (isLoading) {
                   return <Spin tip="Loading columns..." />;
@@ -210,7 +210,7 @@ const DatasourceDetailPage: React.FC = () => {
               },
               onExpand: (expanded: boolean, record: TableInfo) => {
                 if (expanded) {
-                  loadColumns(record.Name);
+                  loadColumns(record.name);
                 }
               },
             }}

@@ -133,16 +133,16 @@ export interface TestConnectionResponse {
 }
 
 export interface TableInfo {
-  Name: string;
-  Comment: string;
+  name: string;
+  comment: string;
 }
 
 export interface ColumnInfo {
   name: string;
-  dataType: string;
+  data_type: string;
   comment: string;
   role: ColumnRole;
-  isVirtual: boolean;
+  is_virtual: boolean;
   expression: string;
 }
 

@@ -433,10 +433,10 @@ const DatasetPage: React.FC = () => {
       const defaultColumns: DatasetColumn[] = tableColumns.map((col: ColumnInfo) => ({
         name: col.name,
         expr: `\`${col.name}\``,
-        type: toStandardType(col.dataType || 'varchar', datasourceType),
+        type: toStandardType(col.data_type || 'varchar', datasourceType),
         comment: col.comment || '',
         role: ['int', 'bigint', 'float', 'decimal', 'numeric', 'double', 'real'].includes(
-          col.dataType?.toLowerCase() ?? ''
+          col.data_type?.toLowerCase() ?? ''
         )
           ? 'metric'
           : 'dimension',
@@ -892,8 +892,8 @@ const DatasetPage: React.FC = () => {
                   }}
                 >
                   {tables.map((table) => (
-                    <Select.Option key={table.Name} value={table.Name}>
-                      {table.Name}
+                    <Select.Option key={table.name} value={table.name}>
+                      {table.name}
                     </Select.Option>
                   ))}
                 </Select>
@@ -913,6 +913,9 @@ const DatasetPage: React.FC = () => {
                   placeholder={intl.formatMessage({ id: 'dataset.enterSql' })}
                   rows={4}
                   disabled={!selectedDatasourceId}
+                  onChange={() => {
+                    setTimeout(handleTableOrSqlChange, 300);
+                  }}
                 />
               </Form.Item>
             )}
@@ -1325,8 +1328,8 @@ const DatasetPage: React.FC = () => {
                 disabled={!selectedDatasourceId || tablesLoading}
               >
                 {tables.map((table) => (
-                  <Select.Option key={table.Name} value={table.Name}>
-                    {table.Name}
+                  <Select.Option key={table.name} value={table.name}>
+                    {table.name}
                   </Select.Option>
                 ))}
               </Select>
