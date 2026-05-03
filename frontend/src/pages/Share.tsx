@@ -1,32 +1,32 @@
-import { useEffect, useState } from 'react';
-import { useIntl } from 'react-intl';
 import {
-  Card,
-  Table,
-  Button,
-  Space,
-  Modal,
-  Form,
-  Select,
-  Input,
-  DatePicker,
-  Tag,
-  Typography,
-  message,
-  Popconfirm,
-  Empty,
-  Spin,
-} from 'antd';
-import {
+  CopyOutlined,
+  DeleteOutlined,
+  LockOutlined,
   PlusOutlined,
   ShareAltOutlined,
-  DeleteOutlined,
-  CopyOutlined,
-  LockOutlined,
 } from '@ant-design/icons';
-import { useStore } from '../store';
-import { sharesApi, Share } from '../api';
+import {
+  Button,
+  Card,
+  DatePicker,
+  Empty,
+  Form,
+  Input,
+  Modal,
+  message,
+  Popconfirm,
+  Select,
+  Space,
+  Spin,
+  Table,
+  Tag,
+  Typography,
+} from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
+import { useCallback, useEffect, useState } from 'react';
+import { useIntl } from 'react-intl';
+import { Share, sharesApi } from '../api';
+import { useStore } from '../store';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -46,20 +46,15 @@ const SharePage: React.FC = () => {
 
   const { charts, fetchCharts } = useStore();
 
-  // Fetch shares and charts on mount
-  useEffect(() => {
-    fetchShares();
-    fetchCharts();
-  }, [fetchCharts]);
-
   // Fetch shares from API
-  const fetchShares = async () => {
+  const fetchShares = useCallback(async () => {
     setLoading(true);
     try {
       const response = await sharesApi.getAll();
+      const currentCharts = useStore.getState().charts;
       // Enrich shares with chart names
-      const enrichedShares = response.data.map((share: Share) => {
-        const chart = charts.find((c) => c.id === share.chart_id);
+      const enrichedShares = response.data.data.map((share: Share) => {
+        const chart = currentCharts.find((c) => c.id === share.chart_id);
         return {
           ...share,
           chartName: chart?.name || `Chart #${share.chart_id}`,
@@ -67,11 +62,19 @@ const SharePage: React.FC = () => {
       });
       setShares(enrichedShares);
     } catch (error: any) {
-      message.error(error.response?.data?.message || intl.formatMessage({ id: 'share.fetchFailed' }));
+      message.error(
+        error.response?.data?.message || intl.formatMessage({ id: 'share.fetchFailed' })
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [intl]);
+
+  // Fetch shares and charts on mount
+  useEffect(() => {
+    fetchCharts();
+    fetchShares();
+  }, [fetchCharts, fetchShares]);
 
   // Create share
   const handleCreateShare = async (values: any) => {
@@ -90,7 +93,7 @@ const SharePage: React.FC = () => {
       }
 
       const response = await sharesApi.create(data);
-      const token = response.data.token;
+      const token = response.data.data.token;
 
       // Generate share link
       const link = `${window.location.origin}/share/${token}`;
@@ -103,7 +106,9 @@ const SharePage: React.FC = () => {
       // Close modal but keep link visible
       form.resetFields();
     } catch (error: any) {
-      message.error(error.response?.data?.message || intl.formatMessage({ id: 'share.createFailed' }));
+      message.error(
+        error.response?.data?.message || intl.formatMessage({ id: 'share.createFailed' })
+      );
     } finally {
       setCreateLoading(false);
     }
@@ -117,7 +122,9 @@ const SharePage: React.FC = () => {
       setShares(shares.filter((s) => s.token !== token));
       message.success(intl.formatMessage({ id: 'share.shareRemoved' }));
     } catch (error: any) {
-      message.error(error.response?.data?.message || intl.formatMessage({ id: 'share.deleteFailed' }));
+      message.error(
+        error.response?.data?.message || intl.formatMessage({ id: 'share.deleteFailed' })
+      );
     }
   };
 
@@ -203,11 +210,7 @@ const SharePage: React.FC = () => {
       key: 'actions',
       render: (_: any, record: ShareWithChartName) => (
         <Space>
-          <Button
-            type="text"
-            icon={<CopyOutlined />}
-            onClick={() => handleCopyLink(record.token)}
-          >
+          <Button type="text" icon={<CopyOutlined />} onClick={() => handleCopyLink(record.token)}>
             {intl.formatMessage({ id: 'share.copyLinkBtn' })}
           </Button>
           <Popconfirm
@@ -254,12 +257,7 @@ const SharePage: React.FC = () => {
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           />
         ) : (
-          <Table
-            columns={columns}
-            dataSource={shares}
-            rowKey="id"
-            pagination={{ pageSize: 10 }}
-          />
+          <Table columns={columns} dataSource={shares} rowKey="id" pagination={{ pageSize: 10 }} />
         )}
       </Card>
 
@@ -280,7 +278,9 @@ const SharePage: React.FC = () => {
           <Form.Item
             name="chart_id"
             label={intl.formatMessage({ id: 'share.selectChart' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'share.pleaseSelectChart' }) }]}
+            rules={[
+              { required: true, message: intl.formatMessage({ id: 'share.pleaseSelectChart' }) },
+            ]}
           >
             <Select
               placeholder={intl.formatMessage({ id: 'share.pleaseSelectChart' })}
@@ -308,13 +308,17 @@ const SharePage: React.FC = () => {
             <RangePicker
               showTime
               style={{ width: '100%' }}
-              disabledDate={(current: Dayjs | null) => current ? current.isBefore(dayjs()) : false}
+              disabledDate={(current: Dayjs | null) =>
+                current ? current.isBefore(dayjs()) : false
+              }
             />
           </Form.Item>
 
           <Form.Item>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={() => setCreateModalVisible(false)}>{intl.formatMessage({ id: 'common.cancel' })}</Button>
+              <Button onClick={() => setCreateModalVisible(false)}>
+                {intl.formatMessage({ id: 'common.cancel' })}
+              </Button>
               <Button type="primary" htmlType="submit" loading={createLoading}>
                 {intl.formatMessage({ id: 'share.createBtn' })}
               </Button>
@@ -336,17 +340,13 @@ const SharePage: React.FC = () => {
       >
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
           <ShareAltOutlined style={{ fontSize: 48, color: '#52c41a', marginBottom: 16 }} />
-          <Typography.Title level={4}>{intl.formatMessage({ id: 'share.shareCreated' })}</Typography.Title>
-          <Text type="secondary">
-            {intl.formatMessage({ id: 'share.useLinkBelow' })}
-          </Text>
+          <Typography.Title level={4}>
+            {intl.formatMessage({ id: 'share.shareCreated' })}
+          </Typography.Title>
+          <Text type="secondary">{intl.formatMessage({ id: 'share.useLinkBelow' })}</Text>
           <div style={{ marginTop: 16 }}>
             <Input.Group compact>
-              <Input
-                style={{ width: 'calc(100% - 100px)' }}
-                value={shareLink || ''}
-                readOnly
-              />
+              <Input style={{ width: 'calc(100% - 100px)' }} value={shareLink || ''} readOnly />
               <Button
                 type="primary"
                 icon={<CopyOutlined />}

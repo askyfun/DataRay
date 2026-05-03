@@ -1,0 +1,28 @@
+{
+  "name": "data-insights",
+  "version": "1.0.0",
+  "description": "拖拽式 BI 可视化分析平台 MVP",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/askyfun/DataRay.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/askyfun/DataRay/issues"
+  },
+  "homepage": "https://github.com/askyfun/DataRay#readme",
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

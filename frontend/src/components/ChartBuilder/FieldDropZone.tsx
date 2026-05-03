@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { useDroppable } from '@dnd-kit/core';
 import { PlusOutlined } from '@ant-design/icons';
-import { Dropdown, Button } from 'antd';
-import FieldPill from './FieldPill';
+import { useDroppable } from '@dnd-kit/core';
+import { Button, Dropdown } from 'antd';
+import React, { useState } from 'react';
 import type { ChartField } from '@/store';
+import FieldPill from './FieldPill';
 
 export type DropZoneType = 'dimension' | 'metric' | 'filter';
 
@@ -47,22 +47,26 @@ const FieldDropZone: React.FC<FieldDropZoneProps> = ({
     filter: '拖拽字段添加筛选',
   };
 
-  const filteredFields = availableFields.filter(f => {
-    if (zoneType === 'dimension') return f.type === 'dimension';
-    if (zoneType === 'metric') return f.type === 'metric';
-    return true;
-  }).filter(f => !fields.some(added => added.id === f.id));
+  const filteredFields = availableFields
+    .filter((f) => {
+      if (zoneType === 'dimension') return f.type === 'dimension';
+      if (zoneType === 'metric') return f.type === 'metric';
+      return true;
+    })
+    .filter((f) => !fields.some((added) => added.id === f.id));
 
-  const dropdownItems = filteredFields.map(field => ({
+  const dropdownItems = filteredFields.map((field) => ({
     key: field.id,
     label: (
       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{
-          width: 6,
-          height: 6,
-          borderRadius: '50%',
-          backgroundColor: field.type === 'dimension' ? '#1890ff' : '#52c41a'
-        }} />
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            backgroundColor: field.type === 'dimension' ? '#1890ff' : '#52c41a',
+          }}
+        />
         {field.name}
       </span>
     ),
@@ -144,7 +148,15 @@ const FieldDropZone: React.FC<FieldDropZoneProps> = ({
               key={field.id}
               field={field}
               fieldType={zoneType === 'filter' ? 'dimension' : zoneType}
-              aggregation={(aggregations[field.id] || 'sum') as 'sum' | 'avg' | 'count' | 'max' | 'min' | 'none'}
+              aggregation={
+                (aggregations[field.id] || 'sum') as
+                  | 'sum'
+                  | 'avg'
+                  | 'count'
+                  | 'max'
+                  | 'min'
+                  | 'none'
+              }
               alias={aliases[field.id]}
               onRemove={() => onRemoveField?.(field.id)}
               onAggregationChange={(agg) => onAggregationChange?.(field.id, agg)}
@@ -152,11 +164,7 @@ const FieldDropZone: React.FC<FieldDropZoneProps> = ({
             />
           ))}
           {filteredFields.length > 0 && (
-            <Dropdown
-              menu={{ items: dropdownItems }}
-              trigger={['click']}
-              placement="bottomLeft"
-            >
+            <Dropdown menu={{ items: dropdownItems }} trigger={['click']} placement="bottomLeft">
               <Button
                 type="dashed"
                 size="small"

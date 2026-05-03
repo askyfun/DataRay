@@ -1,6 +1,8 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import * as Sentry from '@sentry/react';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import type { ApiResponse } from '../lib/api/client';
 import type { QueryConfig } from '../store';
+import type { StandardDataType, TypeConfig } from './datatypes';
 
 // Types
 export type DatasourceType = 'postgresql' | 'clickhouse' | 'mysql' | 'starrocks';
@@ -32,9 +34,16 @@ export interface DatasourceFormData {
 export type DatasetMode = 'direct' | 'accelerated';
 
 // 数据类型
-export type DataType = 'int' | 'float' | 'decimal' | 'string' | 'date' | 'datetime' | 'array' | 'dict' | 'boolean';
-
-import type { StandardDataType, TypeConfig } from './datatypes';
+export type DataType =
+  | 'int'
+  | 'float'
+  | 'decimal'
+  | 'string'
+  | 'date'
+  | 'datetime'
+  | 'array'
+  | 'dict'
+  | 'boolean';
 
 // 列角色
 export type ColumnRole = 'dimension' | 'metric';
@@ -137,93 +146,6 @@ export interface ColumnInfo {
   expression: string;
 }
 
-// Create axios instance
-const apiClient: AxiosInstance = axios.create({
-  baseURL: `http://${window.location.hostname || 'localhost'}:8080`,
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Response interceptor for error handling
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const status = error.response?.status;
-    const message = error.response?.data?.message || error.message || 'An error occurred';
-    console.error('API Error:', message);
-    
-    // 上报非 2xx 响应到 Sentry
-    if (status && status >= 400) {
-      Sentry.captureMessage(`API Error: ${error.response?.config?.method?.toUpperCase()} ${error.response?.config?.url} returned ${status}: ${message}`);
-    }
-    
-    return Promise.reject(error);
-  }
-);
-
-// Datasources API
-export const datasourcesApi = {
-  // Get all datasources
-  getAll: (): Promise<AxiosResponse<Datasource[]>> => {
-    return apiClient.get<Datasource[]>('/api/datasources');
-  },
-
-  // Get single datasource
-  getById: (id: number): Promise<AxiosResponse<Datasource>> => {
-    return apiClient.get<Datasource>(`/api/datasources/${id}`);
-  },
-
-  // Create datasource
-  create: (data: DatasourceFormData): Promise<AxiosResponse<Datasource>> => {
-    return apiClient.post<Datasource>('/api/datasources', data);
-  },
-
-  // Update datasource
-  update: (id: number, data: DatasourceFormData): Promise<AxiosResponse<Datasource>> => {
-    return apiClient.put<Datasource>(`/api/datasources/${id}`, data);
-  },
-
-  // Delete datasource
-  delete: (id: number): Promise<AxiosResponse<void>> => {
-    return apiClient.delete<void>(`/api/datasources/${id}`);
-  },
-
-  // Test connection
-  testConnection: (data: TestConnectionRequest): Promise<AxiosResponse<TestConnectionResponse>> => {
-    return apiClient.post<TestConnectionResponse>('/api/datasources/test', data);
-  },
-
-  getTables: (id: number): Promise<AxiosResponse<TableInfo[]>> => {
-    return apiClient.get<TableInfo[]>(`/api/datasources/${id}/tables`);
-  },
-
-  getTableColumns: (id: number, tableName: string): Promise<AxiosResponse<ColumnInfo[]>> => {
-    return apiClient.get<ColumnInfo[]>(`/api/datasources/${id}/tables/${encodeURIComponent(tableName)}/columns`);
-  },
-
-  // Get data preview from datasource (before creating dataset)
-  getPreview: (id: number, tableName: string, querySQL: string, queryType: string): Promise<AxiosResponse<DatasetPreview>> => {
-    return apiClient.post<DatasetPreview>(`/api/datasources/${id}/preview`, {
-      table_name: tableName,
-      query_sql: querySQL,
-      query_type: queryType,
-    });
-  },
-
-  // Get field distribution
-  getFieldDistribution: (id: number, tableName: string, querySQL: string, queryType: string, fieldName: string, limit?: number): Promise<AxiosResponse<FieldDistribution>> => {
-    return apiClient.post<FieldDistribution>(`/api/datasources/${id}/field-distribution`, {
-      table_name: tableName,
-      query_sql: querySQL,
-      query_type: queryType,
-      field_name: fieldName,
-      limit: limit || 20,
-    });
-  },
-};
-
 // 数据预览
 export interface DatasetPreview {
   columns: string[];
@@ -242,91 +164,7 @@ export interface FieldDistribution {
   }>;
 }
 
-// Datasets API
-export const datasetsApi = {
-  // Get all datasets
-  getAll: (): Promise<AxiosResponse<Dataset[]>> => {
-    return apiClient.get<Dataset[]>('/api/datasets');
-  },
-
-  // Get single dataset
-  getById: (id: number): Promise<AxiosResponse<Dataset>> => {
-    return apiClient.get<Dataset>(`/api/datasets/${id}`);
-  },
-
-  // Create dataset
-  create: (data: DatasetFormData): Promise<AxiosResponse<Dataset>> => {
-    return apiClient.post<Dataset>('/api/datasets', data);
-  },
-
-  // Update dataset
-  update: (id: number, data: DatasetFormData): Promise<AxiosResponse<Dataset>> => {
-    return apiClient.put<Dataset>(`/api/datasets/${id}`, data);
-  },
-
-  // Delete dataset
-  delete: (id: number): Promise<AxiosResponse<void>> => {
-    return apiClient.delete<void>(`/api/datasets/${id}`);
-  },
-
-  // Get columns from dataset
-  getColumns: (id: number): Promise<AxiosResponse<DatasetColumn[]>> => {
-    return apiClient.get<DatasetColumn[]>(`/api/datasets/${id}/columns`);
-  },
-
-  // Update columns
-  updateColumns: (id: number, columns: DatasetColumn[]): Promise<AxiosResponse<Dataset>> => {
-    return apiClient.post<Dataset>(`/api/datasets/${id}/columns`, columns);
-  },
-
-  // Get data preview
-  getPreview: (id: number): Promise<AxiosResponse<DatasetPreview>> => {
-    return apiClient.get<DatasetPreview>(`/api/datasets/${id}/preview`);
-  },
-};
-
-// Charts API
-export const chartsApi = {
-  // Get all charts
-  getAll: (): Promise<AxiosResponse<Chart[]>> => {
-    return apiClient.get<Chart[]>('/api/charts');
-  },
-
-  // Get single chart
-  getById: (id: number): Promise<AxiosResponse<Chart>> => {
-    return apiClient.get<Chart>(`/api/charts/${id}`);
-  },
-
-  // Create chart
-  create: (data: ChartFormData): Promise<AxiosResponse<Chart>> => {
-    return apiClient.post<Chart>('/api/charts', data);
-  },
-
-  // Update chart
-  update: (id: number, data: Partial<ChartFormData>): Promise<AxiosResponse<Chart>> => {
-    return apiClient.put<Chart>(`/api/charts/${id}`, data);
-  },
-
-  // Delete chart
-  delete: (id: number): Promise<AxiosResponse<void>> => {
-    return apiClient.delete<void>(`/api/charts/${id}`);
-  },
-
-  // Get chart data
-  getChartData: (id: number): Promise<AxiosResponse<any[]>> => {
-    return apiClient.get<any[]>(`/api/charts/${id}/data`);
-  },
-
-  // Execute query with config
-  executeQuery: (datasetId: number, config: QueryConfig): Promise<AxiosResponse<any[]>> => {
-    return apiClient.post<any[]>(`/api/datasets/${datasetId}/query`, config);
-  },
-
-    executeChartQuery: (request: ChartQueryRequest): Promise<AxiosResponse<ChartQueryResponse>> => {
-    return apiClient.post<ChartQueryResponse>('/api/charts/query', request);
-  },
-};
-
+// Charts API types
 export type ChartQueryAggregation = 'sum' | 'avg' | 'count' | 'max' | 'min';
 
 export interface ChartQueryMetric {
@@ -337,9 +175,20 @@ export interface ChartQueryMetric {
 
 export interface ChartQueryFilter {
   field: string;
-  op: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'like' | 'in' | 'between' | 'isNull' | 'isNotNull';
-  value: any;
-  value_end?: any;
+  op:
+    | 'eq'
+    | 'neq'
+    | 'gt'
+    | 'gte'
+    | 'lt'
+    | 'lte'
+    | 'like'
+    | 'in'
+    | 'between'
+    | 'isNull'
+    | 'isNotNull';
+  value: unknown;
+  value_end?: unknown;
   logic: 'and' | 'or';
 }
 
@@ -365,7 +214,7 @@ export interface ChartQueryRequest {
 
 export interface TableResponse {
   columns: string[];
-  data: Record<string, any>[];
+  data: Record<string, unknown>[];
   pagination: {
     page: number;
     page_size: number;
@@ -386,7 +235,7 @@ export interface AxisResponse {
   x_axis: string[];
   series: Array<{
     name: string;
-    data: any[];
+    data: unknown[];
   }>;
 }
 
@@ -399,28 +248,268 @@ export interface GeneratedSQL {
   count_sql?: string;
 }
 
-export type ChartQueryResponse = (TableResponse | PieResponse | AxisResponse | ScatterResponse | any[]) & GeneratedSQL;
+export type ChartQueryResponse = (
+  | TableResponse
+  | PieResponse
+  | AxisResponse
+  | ScatterResponse
+  | unknown[]
+) &
+  GeneratedSQL;
+
+// Create single axios instance with proper interceptors
+const apiClient: AxiosInstance = axios.create({
+  baseURL: `http://${window.location.hostname || 'localhost'}:8080`,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor to add X-Request-ID
+apiClient.interceptors.request.use(
+  (config) => {
+    const requestId = crypto.randomUUID();
+    config.headers['X-Request-ID'] = requestId;
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor - validates code field from backend
+apiClient.interceptors.response.use(
+  (response) => {
+    const { code, msg } = response.data || {};
+    // Validate response code - reject if not 20000
+    if (code !== undefined && code !== 20000) {
+      console.error(`API Error [${code}]: ${msg}`);
+      return Promise.reject(new Error(msg || `API Error: ${code}`));
+    }
+    return response;
+  },
+  (error) => {
+    const status = error.response?.status;
+    const apiMsg =
+      error.response?.data?.msg ||
+      error.response?.data?.message ||
+      error.message ||
+      'An error occurred';
+    console.error('API Error:', apiMsg);
+
+    // Report non-2xx responses to Sentry
+    if (status && status >= 400) {
+      Sentry.captureMessage(
+        `API Error: ${error.response?.config?.method?.toUpperCase()} ${error.response?.config?.url} returned ${status}: ${apiMsg}`
+      );
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// Datasources API
+export const datasourcesApi = {
+  // Get all datasources
+  getAll: (): Promise<AxiosResponse<ApiResponse<Datasource[]>>> => {
+    return apiClient.get<ApiResponse<Datasource[]>>('/api/datasources');
+  },
+
+  // Get single datasource
+  getById: (id: number): Promise<AxiosResponse<ApiResponse<Datasource>>> => {
+    return apiClient.get<ApiResponse<Datasource>>(`/api/datasources/${id}`);
+  },
+
+  // Create datasource
+  create: (data: DatasourceFormData): Promise<AxiosResponse<ApiResponse<Datasource>>> => {
+    return apiClient.post<ApiResponse<Datasource>>('/api/datasources', data);
+  },
+
+  // Update datasource
+  update: (
+    id: number,
+    data: DatasourceFormData
+  ): Promise<AxiosResponse<ApiResponse<Datasource>>> => {
+    return apiClient.put<ApiResponse<Datasource>>(`/api/datasources/${id}`, data);
+  },
+
+  // Delete datasource
+  delete: (id: number): Promise<AxiosResponse<ApiResponse<{ status: string }>>> => {
+    return apiClient.delete<ApiResponse<{ status: string }>>(`/api/datasources/${id}`);
+  },
+
+  // Test connection
+  testConnection: (
+    data: TestConnectionRequest
+  ): Promise<AxiosResponse<ApiResponse<{ status: string }>>> => {
+    return apiClient.post<ApiResponse<{ status: string }>>('/api/datasources/test', data);
+  },
+
+  getTables: (id: number): Promise<AxiosResponse<ApiResponse<TableInfo[]>>> => {
+    return apiClient.get<ApiResponse<TableInfo[]>>(`/api/datasources/${id}/tables`);
+  },
+
+  getTableColumns: (
+    id: number,
+    tableName: string
+  ): Promise<AxiosResponse<ApiResponse<ColumnInfo[]>>> => {
+    return apiClient.get<ApiResponse<ColumnInfo[]>>(
+      `/api/datasources/${id}/tables/${encodeURIComponent(tableName)}/columns`
+    );
+  },
+
+  // Get data preview from datasource (before creating dataset)
+  getPreview: (
+    id: number,
+    tableName: string,
+    querySQL: string,
+    queryType: string
+  ): Promise<AxiosResponse<ApiResponse<DatasetPreview>>> => {
+    return apiClient.post<ApiResponse<DatasetPreview>>(`/api/datasources/${id}/preview`, {
+      table_name: tableName,
+      query_sql: querySQL,
+      query_type: queryType,
+    });
+  },
+
+  // Get field distribution
+  getFieldDistribution: (
+    id: number,
+    tableName: string,
+    querySQL: string,
+    queryType: string,
+    fieldName: string,
+    limit?: number
+  ): Promise<AxiosResponse<ApiResponse<FieldDistribution>>> => {
+    return apiClient.post<ApiResponse<FieldDistribution>>(
+      `/api/datasources/${id}/field-distribution`,
+      {
+        table_name: tableName,
+        query_sql: querySQL,
+        query_type: queryType,
+        field_name: fieldName,
+        limit: limit || 20,
+      }
+    );
+  },
+};
+
+// Datasets API
+export const datasetsApi = {
+  // Get all datasets
+  getAll: (): Promise<AxiosResponse<ApiResponse<Dataset[]>>> => {
+    return apiClient.get<ApiResponse<Dataset[]>>('/api/datasets');
+  },
+
+  // Get single dataset
+  getById: (id: number): Promise<AxiosResponse<ApiResponse<Dataset>>> => {
+    return apiClient.get<ApiResponse<Dataset>>(`/api/datasets/${id}`);
+  },
+
+  // Create dataset
+  create: (data: DatasetFormData): Promise<AxiosResponse<ApiResponse<Dataset>>> => {
+    return apiClient.post<ApiResponse<Dataset>>('/api/datasets', data);
+  },
+
+  // Update dataset
+  update: (id: number, data: DatasetFormData): Promise<AxiosResponse<ApiResponse<Dataset>>> => {
+    return apiClient.put<ApiResponse<Dataset>>(`/api/datasets/${id}`, data);
+  },
+
+  // Delete dataset
+  delete: (id: number): Promise<AxiosResponse<ApiResponse<{ status: string }>>> => {
+    return apiClient.delete<ApiResponse<{ status: string }>>(`/api/datasets/${id}`);
+  },
+
+  // Get columns from dataset
+  getColumns: (id: number): Promise<AxiosResponse<ApiResponse<DatasetColumn[]>>> => {
+    return apiClient.get<ApiResponse<DatasetColumn[]>>(`/api/datasets/${id}/columns`);
+  },
+
+  // Update columns
+  updateColumns: (
+    id: number,
+    columns: DatasetColumn[]
+  ): Promise<AxiosResponse<ApiResponse<Dataset>>> => {
+    return apiClient.post<ApiResponse<Dataset>>(`/api/datasets/${id}/columns`, columns);
+  },
+
+  // Get data preview
+  getPreview: (id: number): Promise<AxiosResponse<ApiResponse<DatasetPreview>>> => {
+    return apiClient.get<ApiResponse<DatasetPreview>>(`/api/datasets/${id}/preview`);
+  },
+};
+
+// Charts API
+export const chartsApi = {
+  // Get all charts
+  getAll: (): Promise<AxiosResponse<ApiResponse<Chart[]>>> => {
+    return apiClient.get<ApiResponse<Chart[]>>('/api/charts');
+  },
+
+  // Get single chart
+  getById: (id: number): Promise<AxiosResponse<ApiResponse<Chart>>> => {
+    return apiClient.get<ApiResponse<Chart>>(`/api/charts/${id}`);
+  },
+
+  // Create chart
+  create: (data: ChartFormData): Promise<AxiosResponse<ApiResponse<Chart>>> => {
+    return apiClient.post<ApiResponse<Chart>>('/api/charts', data);
+  },
+
+  // Update chart
+  update: (
+    id: number,
+    data: Partial<ChartFormData>
+  ): Promise<AxiosResponse<ApiResponse<Chart>>> => {
+    return apiClient.put<ApiResponse<Chart>>(`/api/charts/${id}`, data);
+  },
+
+  // Delete chart
+  delete: (id: number): Promise<AxiosResponse<ApiResponse<{ status: string }>>> => {
+    return apiClient.delete<ApiResponse<{ status: string }>>(`/api/charts/${id}`);
+  },
+
+  // Get chart data
+  getChartData: (id: number): Promise<AxiosResponse<ApiResponse<unknown[]>>> => {
+    return apiClient.get<ApiResponse<unknown[]>>(`/api/charts/${id}/data`);
+  },
+
+  // Execute query with config
+  executeQuery: (
+    datasetId: number,
+    config: QueryConfig
+  ): Promise<AxiosResponse<ApiResponse<unknown[]>>> => {
+    return apiClient.post<ApiResponse<unknown[]>>(`/api/datasets/${datasetId}/query`, config);
+  },
+
+  // Execute chart query
+  executeChartQuery: (
+    request: ChartQueryRequest
+  ): Promise<AxiosResponse<ApiResponse<ChartQueryResponse>>> => {
+    return apiClient.post<ApiResponse<ChartQueryResponse>>('/api/charts/query', request);
+  },
+};
 
 // Shares API
 export const sharesApi = {
   // Get all shares
-  getAll: (): Promise<AxiosResponse<Share[]>> => {
-    return apiClient.get<Share[]>('/api/shares');
+  getAll: (): Promise<AxiosResponse<ApiResponse<Share[]>>> => {
+    return apiClient.get<ApiResponse<Share[]>>('/api/shares');
   },
 
   // Create share
-  create: (data: ShareFormData): Promise<AxiosResponse<Share>> => {
-    return apiClient.post<Share>('/api/shares', data);
+  create: (data: ShareFormData): Promise<AxiosResponse<ApiResponse<Share>>> => {
+    return apiClient.post<ApiResponse<Share>>('/api/shares', data);
   },
 
   // Get share by token
-  getByToken: (token: string): Promise<AxiosResponse<Share>> => {
-    return apiClient.get<Share>(`/api/shares/${token}`);
+  getByToken: (token: string): Promise<AxiosResponse<ApiResponse<Share>>> => {
+    return apiClient.get<ApiResponse<Share>>(`/api/shares/${token}`);
   },
 
   // Verify share password
-  verifyPassword: (token: string, password: string): Promise<AxiosResponse<Share>> => {
-    return apiClient.post<Share>(`/api/shares/${token}/verify`, { password });
+  verifyPassword: (token: string, password: string): Promise<AxiosResponse<ApiResponse<Share>>> => {
+    return apiClient.post<ApiResponse<Share>>(`/api/shares/${token}/verify`, { password });
   },
 };
 

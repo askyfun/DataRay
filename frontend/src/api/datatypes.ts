@@ -172,17 +172,14 @@ export const datasourceTypeMappings: Record<string, TypeMapping> = {
 // 类型转换函数
 // ============================================================
 
-export function toStandardType(
-  sourceType: string,
-  datasourceType: string
-): StandardDataType {
+export function toStandardType(sourceType: string, datasourceType: string): StandardDataType {
   const mapping = datasourceTypeMappings[datasourceType.toLowerCase()];
   if (!mapping) {
     return 'unknown';
   }
 
   const normalizedType = sourceType.toLowerCase().trim();
-  
+
   // 特殊处理带参数的复杂类型
   if (normalizedType.startsWith('decimal')) return 'number';
   if (normalizedType.startsWith('numeric')) return 'number';
@@ -262,17 +259,18 @@ export function toSourceType(
 // 类型辅助函数
 // ============================================================
 
-export const dataTypeOptions: Array<{ value: StandardDataType; label: string; category: string }> = [
-  { value: 'number', label: '数值', category: '数值' },
-  { value: 'integer', label: '整数', category: '数值' },
-  { value: 'boolean', label: '布尔值', category: '数值' },
-  { value: 'string', label: '字符串', category: '文本' },
-  { value: 'date', label: '日期', category: '日期时间' },
-  { value: 'datetime', label: '日期时间', category: '日期时间' },
-  { value: 'array', label: '数组', category: '复杂类型' },
-  { value: 'map', label: '字典', category: '复杂类型' },
-  { value: 'json', label: 'JSON', category: '复杂类型' },
-];
+export const dataTypeOptions: Array<{ value: StandardDataType; label: string; category: string }> =
+  [
+    { value: 'number', label: '数值', category: '数值' },
+    { value: 'integer', label: '整数', category: '数值' },
+    { value: 'boolean', label: '布尔值', category: '数值' },
+    { value: 'string', label: '字符串', category: '文本' },
+    { value: 'date', label: '日期', category: '日期时间' },
+    { value: 'datetime', label: '日期时间', category: '日期时间' },
+    { value: 'array', label: '数组', category: '复杂类型' },
+    { value: 'map', label: '字典', category: '复杂类型' },
+    { value: 'json', label: 'JSON', category: '复杂类型' },
+  ];
 
 export function getTypeCategory(stdType: StandardDataType): string {
   const categories: Record<string, string> = {

@@ -1,0 +1,87 @@
+package entity
+
+// Dataset represents a logical data set derived from a datasource
+type Dataset struct {
+	ID               int     `json:"id"`
+	Name             string  `json:"name"`
+	DatasourceID     int     `json:"datasource_id"`
+	TableName        *string `json:"table_name"`
+	QuerySQL         *string `json:"query_sql"`
+	QueryType        string  `json:"query_type"` // "table" or "sql"
+	Mode             string  `json:"mode"`       // "direct"
+	AccelerateConfig *string `json:"accelerate_config"`
+	Description      *string `json:"description"`
+	Tags             string  `json:"tags"`
+	RefreshStrategy  *string `json:"refresh_strategy"`
+	PreviewData      *string `json:"preview_data"`
+	QualityRules     string  `json:"quality_rules"`
+	Columns          string  `json:"columns"`
+	CreatedAt        string  `json:"created_at"`
+	UpdatedAt        string  `json:"updated_at"`
+}
+
+// DatasetColumn represents a column definition in a dataset
+type DatasetColumn struct {
+	Name       string     `json:"name"`
+	Expr       string     `json:"expr"`
+	Type       string     `json:"type"`
+	TypeConfig TypeConfig `json:"type_config"`
+	Comment    string     `json:"comment"`
+	Role       string     `json:"role"` // "dimension" or "metric"
+}
+
+// TypeConfig holds type-specific configuration
+type TypeConfig struct {
+	Precision int `json:"precision"`
+	Scale     int `json:"scale"`
+}
+
+// DatasetService defines operations for dataset management
+type DatasetService interface {
+	// CRUD operations
+	List(limit, offset int) ([]Dataset, error)
+	GetByID(id int) (*Dataset, error)
+	Create(ds *Dataset) (*Dataset, error)
+	Update(ds *Dataset) (*Dataset, error)
+	Delete(id int) error
+
+	// Column operations
+	GetColumns(id int) ([]DatasetColumn, error)
+	UpdateColumns(id int, columns []DatasetColumn) (*Dataset, error)
+
+	// Data operations
+	Preview(id int) (*PreviewResult, error)
+	Query(id int, config QueryConfig) ([]map[string]any, error)
+}
+
+// QueryConfig represents a query configuration for dataset
+type QueryConfig struct {
+	DimensionGroups []FieldGroup `json:"dimension_groups"`
+	MetricGroups    []FieldGroup `json:"metric_groups"`
+	Filters         []Filter     `json:"filters"`
+	Sort            *SortConfig  `json:"sort"`
+	Limit           int          `json:"limit"`
+}
+
+// FieldGroup represents a group of fields
+type FieldGroup struct {
+	ID     string   `json:"id"`
+	Fields []string `json:"fields"`
+	Alias  string   `json:"alias,omitempty"`
+}
+
+// Filter represents a filter condition
+type Filter struct {
+	ID       string      `json:"id"`
+	Field    string      `json:"field"`
+	Operator string      `json:"operator"`
+	Value    interface{} `json:"value"`
+	ValueEnd interface{} `json:"value_end,omitempty"`
+	Logic    string      `json:"logic"`
+}
+
+// SortConfig represents sorting configuration
+type SortConfig struct {
+	Field string `json:"field"`
+	Order string `json:"order"` // "asc" or "desc"
+}

@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import {
+  ArrowLeftOutlined,
+  DatabaseOutlined,
+  SaveOutlined,
+  TableOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -14,14 +18,10 @@ import {
   Tag,
   Typography,
 } from 'antd';
-import {
-  ArrowLeftOutlined,
-  DatabaseOutlined,
-  SaveOutlined,
-  TableOutlined,
-} from '@ant-design/icons';
+import { useCallback, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
-import { DatasetFormData, DatasetColumn, TableInfo, datasourcesApi, datasetsApi } from '../api';
+import { useNavigate, useParams } from 'react-router-dom';
+import { DatasetColumn, DatasetFormData, datasetsApi, datasourcesApi, TableInfo } from '../api';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -49,12 +49,40 @@ const DatasetEditPage: React.FC = () => {
     const fetchDatasources = async () => {
       try {
         const response = await datasourcesApi.getAll();
-        setDatasources(response.data || []);
+        setDatasources(response.data.data || []);
       } catch (error: any) {
         message.error(error.response?.data?.message || 'Failed to fetch datasources');
       }
     };
     fetchDatasources();
+  }, []);
+
+  // Fetch tables from datasource
+  const fetchTables = useCallback(async (datasourceId: number) => {
+    setTablesLoading(true);
+    try {
+      const response = await datasourcesApi.getTables(datasourceId);
+      setTables(response.data.data || []);
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'Failed to fetch tables');
+      setTables([]);
+    } finally {
+      setTablesLoading(false);
+    }
+  }, []);
+
+  // Fetch columns from dataset
+  const fetchColumns = useCallback(async (dsId: number) => {
+    setColumnsLoading(true);
+    try {
+      const response = await datasetsApi.getColumns(dsId);
+      setDatasetColumns(response.data.data || []);
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'Failed to fetch columns');
+      setDatasetColumns([]);
+    } finally {
+      setColumnsLoading(false);
+    }
   }, []);
 
   // Fetch dataset data
@@ -69,7 +97,7 @@ const DatasetEditPage: React.FC = () => {
       setLoading(true);
       try {
         const response = await datasetsApi.getById(datasetId);
-        const dataset = response.data;
+        const dataset = response.data.data;
 
         form.setFieldsValue({
           name: dataset.name,
@@ -93,14 +121,13 @@ const DatasetEditPage: React.FC = () => {
       } catch (error: any) {
         message.error(error.response?.data?.message || 'Failed to fetch dataset');
         navigate('/datasets');
-        navigate('/datasets');
       } finally {
         setLoading(false);
       }
     };
 
     fetchDataset();
-  }, [datasetId, navigate, form]);
+  }, [datasetId, navigate, form, fetchTables, fetchColumns]);
 
   // Fetch tables when datasource changes
   useEffect(() => {
@@ -109,35 +136,7 @@ const DatasetEditPage: React.FC = () => {
     } else {
       setTables([]);
     }
-  }, [selectedDatasourceId, queryType]);
-
-  // Fetch tables from datasource
-  const fetchTables = async (datasourceId: number) => {
-    setTablesLoading(true);
-    try {
-      const response = await datasourcesApi.getTables(datasourceId);
-      setTables(response.data || []);
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to fetch tables');
-      setTables([]);
-    } finally {
-      setTablesLoading(false);
-    }
-  };
-
-  // Fetch columns from dataset
-  const fetchColumns = async (dsId: number) => {
-    setColumnsLoading(true);
-    try {
-      const response = await datasetsApi.getColumns(dsId);
-      setDatasetColumns(response.data || []);
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to fetch columns');
-      setDatasetColumns([]);
-    } finally {
-      setColumnsLoading(false);
-    }
-  };
+  }, [selectedDatasourceId, queryType, fetchTables]);
 
   // Handle datasource selection change
   const handleDatasourceChange = (value: number) => {
@@ -172,7 +171,9 @@ const DatasetEditPage: React.FC = () => {
       message.success(intl.formatMessage({ id: 'dataset.edit.success' }));
       navigate('/datasets');
     } catch (error: any) {
-      message.error(error.response?.data?.message || intl.formatMessage({ id: 'dataset.edit.error' }));
+      message.error(
+        error.response?.data?.message || intl.formatMessage({ id: 'dataset.edit.error' })
+      );
     } finally {
       setSubmitting(false);
     }
@@ -210,7 +211,9 @@ const DatasetEditPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+      <div
+        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}
+      >
         <Spin size="large" />
       </div>
     );
@@ -219,12 +222,16 @@ const DatasetEditPage: React.FC = () => {
   return (
     <div style={{ padding: '24px' }}>
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px',
+          }}
+        >
           <Space>
-            <Button
-              icon={<ArrowLeftOutlined />}
-              onClick={handleCancel}
-            >
+            <Button icon={<ArrowLeftOutlined />} onClick={handleCancel}>
               {intl.formatMessage({ id: 'common.back' })}
             </Button>
             <Title level={3} style={{ margin: 0 }}>
@@ -245,7 +252,9 @@ const DatasetEditPage: React.FC = () => {
             <Form.Item
               name="name"
               label={intl.formatMessage({ id: 'dataset.name' })}
-              rules={[{ required: true, message: intl.formatMessage({ id: 'dataset.name.required' }) }]}
+              rules={[
+                { required: true, message: intl.formatMessage({ id: 'dataset.name.required' }) },
+              ]}
             >
               <Input placeholder={intl.formatMessage({ id: 'dataset.name.placeholder' })} />
             </Form.Item>
@@ -253,7 +262,12 @@ const DatasetEditPage: React.FC = () => {
             <Form.Item
               name="datasource_id"
               label={intl.formatMessage({ id: 'dataset.datasource' })}
-              rules={[{ required: true, message: intl.formatMessage({ id: 'dataset.datasource.required' }) }]}
+              rules={[
+                {
+                  required: true,
+                  message: intl.formatMessage({ id: 'dataset.datasource.required' }),
+                },
+              ]}
             >
               <Select
                 placeholder={intl.formatMessage({ id: 'dataset.datasource.placeholder' })}
@@ -273,7 +287,12 @@ const DatasetEditPage: React.FC = () => {
             <Form.Item
               name="query_type"
               label={intl.formatMessage({ id: 'dataset.queryType' })}
-              rules={[{ required: true, message: intl.formatMessage({ id: 'dataset.queryType.required' }) }]}
+              rules={[
+                {
+                  required: true,
+                  message: intl.formatMessage({ id: 'dataset.queryType.required' }),
+                },
+              ]}
             >
               <Radio.Group onChange={(e) => handleQueryTypeChange(e.target.value)}>
                 <Radio.Button value="table">
@@ -295,7 +314,12 @@ const DatasetEditPage: React.FC = () => {
               <Form.Item
                 name="table_name"
                 label={intl.formatMessage({ id: 'dataset.tableName' })}
-                rules={[{ required: queryType === 'table', message: intl.formatMessage({ id: 'dataset.tableName.required' }) }]}
+                rules={[
+                  {
+                    required: queryType === 'table',
+                    message: intl.formatMessage({ id: 'dataset.tableName.required' }),
+                  },
+                ]}
               >
                 <Select
                   placeholder={intl.formatMessage({ id: 'dataset.tableName.placeholder' })}
@@ -313,7 +337,12 @@ const DatasetEditPage: React.FC = () => {
               <Form.Item
                 name="query_sql"
                 label={intl.formatMessage({ id: 'dataset.querySql' })}
-                rules={[{ required: queryType === 'sql', message: intl.formatMessage({ id: 'dataset.querySql.required' }) }]}
+                rules={[
+                  {
+                    required: queryType === 'sql',
+                    message: intl.formatMessage({ id: 'dataset.querySql.required' }),
+                  },
+                ]}
               >
                 <TextArea
                   placeholder="SELECT * FROM table_name"
@@ -324,10 +353,7 @@ const DatasetEditPage: React.FC = () => {
             )}
           </div>
 
-          <Form.Item
-            name="description"
-            label={intl.formatMessage({ id: 'dataset.description' })}
-          >
+          <Form.Item name="description" label={intl.formatMessage({ id: 'dataset.description' })}>
             <TextArea
               placeholder={intl.formatMessage({ id: 'dataset.description.placeholder' })}
               rows={3}
@@ -336,9 +362,7 @@ const DatasetEditPage: React.FC = () => {
 
           <Form.Item>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={handleCancel}>
-                {intl.formatMessage({ id: 'common.cancel' })}
-              </Button>
+              <Button onClick={handleCancel}>{intl.formatMessage({ id: 'common.cancel' })}</Button>
               <Button
                 type="primary"
                 htmlType="submit"
@@ -354,9 +378,7 @@ const DatasetEditPage: React.FC = () => {
 
         {/* Fields Section */}
         <div style={{ marginTop: '32px', borderTop: '1px solid #f0f0f0', paddingTop: '24px' }}>
-          <Title level={4}>
-            {intl.formatMessage({ id: 'dataset.fields.title' })}
-          </Title>
+          <Title level={4}>{intl.formatMessage({ id: 'dataset.fields.title' })}</Title>
           <Text type="secondary" style={{ display: 'block', marginBottom: '16px' }}>
             {intl.formatMessage({ id: 'dataset.fields.description' })}
           </Text>

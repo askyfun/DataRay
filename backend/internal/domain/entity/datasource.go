@@ -1,0 +1,79 @@
+package entity
+
+// Datasource represents a data source connection configuration
+type Datasource struct {
+	ID           int    `json:"id"`
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	Host         string `json:"host"`
+	Port         int    `json:"port"`
+	DatabaseName string `json:"database_name"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	CreatedAt    string `json:"created_at"`
+	UpdatedAt    string `json:"updated_at"`
+}
+
+// DatasourceConnectionConfig holds connection parameters for establishing database connections
+type DatasourceConnectionConfig struct {
+	Host         string `json:"host"`
+	Port         int    `json:"port"`
+	DatabaseName string `json:"database_name"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+}
+
+// TableInfo represents metadata about a database table
+type TableInfo struct {
+	Name    string `json:"name"`
+	Comment string `json:"comment"`
+}
+
+// ColumnInfo represents metadata about a database column
+type ColumnInfo struct {
+	Name     string `json:"name"`
+	DataType string `json:"data_type"`
+	Comment  string `json:"comment"`
+}
+
+// DatasourceService defines operations for datasource management
+type DatasourceService interface {
+	// CRUD operations
+	List(limit, offset int) ([]Datasource, error)
+	GetByID(id int) (*Datasource, error)
+	Create(ds *Datasource) (*Datasource, error)
+	Update(ds *Datasource) (*Datasource, error)
+	Delete(id int) error
+
+	// Connection testing
+	TestConnection(config DatasourceConnectionConfig, driverType string) error
+
+	// Schema operations
+	GetTables(id int) ([]TableInfo, error)
+	GetColumns(id int, tableName string) ([]ColumnInfo, error)
+
+	// Preview operations
+	Preview(id int, tableName, querySQL, queryType string) (*PreviewResult, error)
+	GetFieldDistribution(id int, tableName, querySQL, queryType, fieldName string, limit int) (*FieldDistribution, error)
+}
+
+// PreviewResult represents data preview from a datasource
+type PreviewResult struct {
+	Columns []string         `json:"columns"`
+	Data    []map[string]any `json:"data"`
+}
+
+// FieldDistribution represents the distribution of values in a field
+type FieldDistribution struct {
+	FieldName    string            `json:"field_name"`
+	TotalCount   int64             `json:"total_count"`
+	UniqueCount  int               `json:"unique_count"`
+	Distribution []FieldValueCount `json:"distribution"`
+}
+
+// FieldValueCount represents a single value's count in distribution
+type FieldValueCount struct {
+	Value      any     `json:"value"`
+	Count      int64   `json:"count"`
+	Percentage float64 `json:"percentage"`
+}

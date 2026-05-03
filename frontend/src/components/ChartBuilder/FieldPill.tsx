@@ -1,6 +1,6 @@
+import { CloseOutlined, SettingOutlined } from '@ant-design/icons';
+import { Dropdown, Menu, Tag } from 'antd';
 import React from 'react';
-import { Tag, Dropdown, Menu } from 'antd';
-import { SettingOutlined, CloseOutlined } from '@ant-design/icons';
 import type { ChartField } from '@/store';
 
 export interface FieldPillProps {
@@ -50,7 +50,8 @@ const FieldPill: React.FC<FieldPillProps> = ({
   const getDisplayText = () => {
     if (alias) return alias;
     if (fieldType === 'metric' && aggregation !== 'none') {
-      const aggLabel = AGGREGATION_OPTIONS.find(opt => opt.value === aggregation)?.label || aggregation;
+      const aggLabel =
+        AGGREGATION_OPTIONS.find((opt) => opt.value === aggregation)?.label || aggregation;
       return `${aggLabel}(${field.name})`;
     }
     return field.name;
@@ -62,7 +63,7 @@ const FieldPill: React.FC<FieldPillProps> = ({
 
   const aggregationMenu = (
     <Menu
-      items={AGGREGATION_OPTIONS.map(opt => ({
+      items={AGGREGATION_OPTIONS.map((opt) => ({
         key: opt.value,
         label: opt.label,
         onClick: () => handleAggregationMenuClick(opt.value),
@@ -91,7 +92,7 @@ const FieldPill: React.FC<FieldPillProps> = ({
       ) : (
         <span style={{ fontWeight: 500 }}>{getDisplayText()}</span>
       )}
-      
+
       {onSettings && (
         <SettingOutlined
           style={{ fontSize: '12px', opacity: 0.6 }}
@@ -101,7 +102,7 @@ const FieldPill: React.FC<FieldPillProps> = ({
           }}
         />
       )}
-      
+
       {onRemove && (
         <CloseOutlined
           style={{ fontSize: '12px', opacity: 0.6 }}

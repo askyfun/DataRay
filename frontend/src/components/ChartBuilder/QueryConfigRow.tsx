@@ -1,6 +1,6 @@
 import React from 'react';
-import FieldDropZone, { DropZoneType } from './FieldDropZone';
 import type { ChartField } from '@/store';
+import FieldDropZone, { DropZoneType } from './FieldDropZone';
 
 export interface QueryConfigRowProps {
   /** 行类型 */

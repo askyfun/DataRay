@@ -1,39 +1,39 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import {
-  Card,
-  Typography,
-  Table,
-  Tag,
-  Button,
-  Space,
-  Spin,
-  message,
-  Breadcrumb,
-  Modal,
-  Descriptions,
-  Tabs,
-  Select,
-  Switch,
-  Form,
-  Input,
-  Popconfirm,
-} from 'antd';
 import {
   AppstoreOutlined,
-  DatabaseOutlined,
   ArrowLeftOutlined,
-  EditOutlined,
+  DatabaseOutlined,
   DeleteOutlined,
-  ReloadOutlined,
-  TableOutlined,
+  EditOutlined,
   FunctionOutlined,
+  ReloadOutlined,
   SaveOutlined,
+  TableOutlined,
 } from '@ant-design/icons';
+import {
+  Breadcrumb,
+  Button,
+  Card,
+  Descriptions,
+  Form,
+  Input,
+  Modal,
+  message,
+  Popconfirm,
+  Select,
+  Space,
+  Spin,
+  Switch,
+  Table,
+  Tabs,
+  Tag,
+  Typography,
+} from 'antd';
+import { useCallback, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
-import { useStore } from '../store';
-import { datasetsApi, DatasetPreview } from '../api';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { DatasetColumn } from '../api';
+import { DatasetPreview, datasetsApi } from '../api';
+import { useStore } from '../store';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -79,47 +79,47 @@ const DatasetDetailPage: React.FC = () => {
     }
   }, [datasources.length, fetchDatasources]);
 
-  const loadDataset = async () => {
+  const loadDataset = useCallback(async () => {
     setDatasetLoading(true);
     try {
       const response = await datasetsApi.getById(datasetId);
-      setDataset(response.data);
+      setDataset(response.data.data);
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Failed to load dataset');
     } finally {
       setDatasetLoading(false);
     }
-  };
+  }, [datasetId]);
 
   useEffect(() => {
     if (datasetId) {
       loadDataset();
     }
-  }, [datasetId]);
+  }, [datasetId, loadDataset]);
 
-  const loadColumns = async () => {
+  const loadColumns = useCallback(async () => {
     setColumnsLoading(true);
     try {
       const response = await datasetsApi.getColumns(datasetId);
-      setColumns(response.data);
+      setColumns(response.data.data);
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Failed to load columns');
     } finally {
       setColumnsLoading(false);
     }
-  };
+  }, [datasetId]);
 
   useEffect(() => {
     if (datasetId) {
       loadColumns();
     }
-  }, [datasetId]);
+  }, [datasetId, loadColumns]);
 
   const loadPreview = async () => {
     setPreviewLoading(true);
     try {
       const response = await datasetsApi.getPreview(datasetId);
-      setPreview(response.data);
+      setPreview(response.data.data);
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Failed to load preview');
     } finally {
@@ -128,9 +128,7 @@ const DatasetDetailPage: React.FC = () => {
   };
 
   const handleColumnRoleChange = (name: string, role: 'dimension' | 'metric') => {
-    setColumns((prev) =>
-      prev.map((col) => (col.name === name ? { ...col, role } : col))
-    );
+    setColumns((prev) => prev.map((col) => (col.name === name ? { ...col, role } : col)));
   };
 
   const handleColumnTypeChange = (name: string, type: string) => {
@@ -167,8 +165,8 @@ const DatasetDetailPage: React.FC = () => {
       const isEditing = !!editingVirtualField;
 
       let newColumn: DatasetColumn;
-      if (isEditing) {
-        newColumn = { ...editingVirtualField!, ...values };
+      if (isEditing && editingVirtualField) {
+        newColumn = { ...editingVirtualField, ...values };
       } else {
         newColumn = {
           name: values.name,
@@ -181,7 +179,9 @@ const DatasetDetailPage: React.FC = () => {
 
       let updatedColumns: DatasetColumn[];
       if (isEditing) {
-        updatedColumns = columns.map((col) => (col.name === editingVirtualField.name ? newColumn : col));
+        updatedColumns = columns.map((col) =>
+          col.name === editingVirtualField.name ? newColumn : col
+        );
       } else {
         updatedColumns = [...columns, newColumn];
       }
@@ -221,7 +221,10 @@ const DatasetDetailPage: React.FC = () => {
   const handleDelete = () => {
     Modal.confirm({
       title: intl.formatMessage({ id: 'dataset.detail.deleteConfirmTitle' }),
-      content: intl.formatMessage({ id: 'dataset.detail.deleteConfirmContent' }, { name: dataset?.name }),
+      content: intl.formatMessage(
+        { id: 'dataset.detail.deleteConfirmContent' },
+        { name: dataset?.name }
+      ),
       okText: intl.formatMessage({ id: 'common.delete' }),
       okButtonProps: { danger: true },
       cancelText: intl.formatMessage({ id: 'common.cancel' }),
@@ -250,10 +253,15 @@ const DatasetDetailPage: React.FC = () => {
       render: (name: string, record: any) => (
         <Space>
           {record.isVirtual && <FunctionOutlined style={{ color: '#722ed1' }} />}
-          <Text strong={record.isVirtual} style={{ color: record.role === 'dimension' ? '#1890ff' : '#722ed1' }}>
+          <Text
+            strong={record.isVirtual}
+            style={{ color: record.role === 'dimension' ? '#1890ff' : '#722ed1' }}
+          >
             {name}
           </Text>
-          {record.isVirtual && <Tag color="purple">{intl.formatMessage({ id: 'field.virtual' })}</Tag>}
+          {record.isVirtual && (
+            <Tag color="purple">{intl.formatMessage({ id: 'field.virtual' })}</Tag>
+          )}
           {record.role === 'dimension' && !record.isVirtual && (
             <Tag color="blue">{intl.formatMessage({ id: 'field.dimension' })}</Tag>
           )}
@@ -275,12 +283,22 @@ const DatasetDetailPage: React.FC = () => {
           style={{ width: 110 }}
           onChange={(value) => handleColumnTypeChange(record.name, value)}
         >
-          <Select.Option value="string">{intl.formatMessage({ id: 'dataType.string' })}</Select.Option>
-          <Select.Option value="int">{intl.formatMessage({ id: 'dataType.integer' })}</Select.Option>
-          <Select.Option value="float">{intl.formatMessage({ id: 'dataType.float' })}</Select.Option>
+          <Select.Option value="string">
+            {intl.formatMessage({ id: 'dataType.string' })}
+          </Select.Option>
+          <Select.Option value="int">
+            {intl.formatMessage({ id: 'dataType.integer' })}
+          </Select.Option>
+          <Select.Option value="float">
+            {intl.formatMessage({ id: 'dataType.float' })}
+          </Select.Option>
           <Select.Option value="date">{intl.formatMessage({ id: 'dataType.date' })}</Select.Option>
-          <Select.Option value="datetime">{intl.formatMessage({ id: 'dataType.datetime' })}</Select.Option>
-          <Select.Option value="boolean">{intl.formatMessage({ id: 'dataType.boolean' })}</Select.Option>
+          <Select.Option value="datetime">
+            {intl.formatMessage({ id: 'dataType.datetime' })}
+          </Select.Option>
+          <Select.Option value="boolean">
+            {intl.formatMessage({ id: 'dataType.boolean' })}
+          </Select.Option>
         </Select>
       ),
     },
@@ -295,7 +313,9 @@ const DatasetDetailPage: React.FC = () => {
           checkedChildren={intl.formatMessage({ id: 'field.metric' })}
           unCheckedChildren={intl.formatMessage({ id: 'field.dimension' })}
           size="small"
-          onChange={(checked) => handleColumnRoleChange(record.name, checked ? 'metric' : 'dimension')}
+          onChange={(checked) =>
+            handleColumnRoleChange(record.name, checked ? 'metric' : 'dimension')
+          }
           style={{
             backgroundColor: role === 'metric' ? '#722ed1' : '#1890ff',
           }}
@@ -307,7 +327,14 @@ const DatasetDetailPage: React.FC = () => {
       dataIndex: 'expr',
       key: 'expr',
       width: 150,
-      render: (expression: string) => expression ? <Text code style={{ fontSize: 12 }}>{expression}</Text> : '-',
+      render: (expression: string) =>
+        expression ? (
+          <Text code style={{ fontSize: 12 }}>
+            {expression}
+          </Text>
+        ) : (
+          '-'
+        ),
     },
     {
       title: intl.formatMessage({ id: 'dataset.actions' }),
@@ -329,12 +356,7 @@ const DatasetDetailPage: React.FC = () => {
               okText={intl.formatMessage({ id: 'common.yes' })}
               cancelText={intl.formatMessage({ id: 'common.no' })}
             >
-              <Button
-                type="text"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-              />
+              <Button type="text" size="small" danger icon={<DeleteOutlined />} />
             </Popconfirm>
           </Space>
         );
@@ -342,12 +364,13 @@ const DatasetDetailPage: React.FC = () => {
     },
   ];
 
-  const previewColumns = preview?.columns.map((col) => ({
-    title: col,
-    dataIndex: col,
-    key: col,
-    ellipsis: true,
-  })) || [];
+  const previewColumns =
+    preview?.columns.map((col) => ({
+      title: col,
+      dataIndex: col,
+      key: col,
+      ellipsis: true,
+    })) || [];
 
   if (datasetLoading) {
     return (
@@ -407,23 +430,18 @@ const DatasetDetailPage: React.FC = () => {
             )}
           </div>
           <Space>
-            <Button
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate('/datasets')}
-            >
+            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/datasets')}>
               {intl.formatMessage({ id: 'common.back' })}
             </Button>
             <Button
               icon={<EditOutlined />}
-              onClick={() => message.info(intl.formatMessage({ id: 'dataset.detail.editComingSoon' }))}
+              onClick={() =>
+                message.info(intl.formatMessage({ id: 'dataset.detail.editComingSoon' }))
+              }
             >
               {intl.formatMessage({ id: 'common.edit' })}
             </Button>
-            <Button
-              icon={<DeleteOutlined />}
-              danger
-              onClick={handleDelete}
-            >
+            <Button icon={<DeleteOutlined />} danger onClick={handleDelete}>
               {intl.formatMessage({ id: 'common.delete' })}
             </Button>
           </Space>
@@ -452,7 +470,9 @@ const DatasetDetailPage: React.FC = () => {
             )}
           </Descriptions.Item>
           <Descriptions.Item label={intl.formatMessage({ id: 'dataset.detail.createdAt' })}>
-            {displayDataset?.created_at ? new Date(displayDataset.created_at).toLocaleString() : '-'}
+            {displayDataset?.created_at
+              ? new Date(displayDataset.created_at).toLocaleString()
+              : '-'}
           </Descriptions.Item>
           <Descriptions.Item label={intl.formatMessage({ id: 'dataset.detail.fields' })}>
             {columns.length} {intl.formatMessage({ id: 'dataset.detail.fieldsCount' })}
@@ -467,7 +487,14 @@ const DatasetDetailPage: React.FC = () => {
               label: intl.formatMessage({ id: 'dataset.detail.tabFields' }),
               children: (
                 <div>
-                  <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div
+                    style={{
+                      marginBottom: '16px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
                     <Space>
                       <Button
                         icon={<ReloadOutlined />}
@@ -546,7 +573,11 @@ const DatasetDetailPage: React.FC = () => {
       </Card>
 
       <Modal
-        title={editingVirtualField ? intl.formatMessage({ id: 'virtualField.edit' }) : intl.formatMessage({ id: 'virtualField.add' })}
+        title={
+          editingVirtualField
+            ? intl.formatMessage({ id: 'virtualField.edit' })
+            : intl.formatMessage({ id: 'virtualField.add' })
+        }
         open={virtualFieldModalVisible}
         onCancel={() => {
           setVirtualFieldModalVisible(false);
@@ -556,14 +587,13 @@ const DatasetDetailPage: React.FC = () => {
         footer={null}
         width={500}
       >
-        <Form
-          form={form}
-          layout="vertical"
-        >
+        <Form form={form} layout="vertical">
           <Form.Item
             name="name"
             label={intl.formatMessage({ id: 'field.fieldName' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'field.pleaseEnterFieldName' }) }]}
+            rules={[
+              { required: true, message: intl.formatMessage({ id: 'field.pleaseEnterFieldName' }) },
+            ]}
           >
             <Input placeholder="e.g., total_price" disabled={!!editingVirtualField} />
           </Form.Item>
@@ -573,12 +603,24 @@ const DatasetDetailPage: React.FC = () => {
             initialValue="string"
           >
             <Select>
-              <Select.Option value="string">{intl.formatMessage({ id: 'dataType.string' })}</Select.Option>
-              <Select.Option value="int">{intl.formatMessage({ id: 'dataType.integer' })}</Select.Option>
-              <Select.Option value="float">{intl.formatMessage({ id: 'dataType.float' })}</Select.Option>
-              <Select.Option value="date">{intl.formatMessage({ id: 'dataType.date' })}</Select.Option>
-              <Select.Option value="datetime">{intl.formatMessage({ id: 'dataType.datetime' })}</Select.Option>
-              <Select.Option value="boolean">{intl.formatMessage({ id: 'dataType.boolean' })}</Select.Option>
+              <Select.Option value="string">
+                {intl.formatMessage({ id: 'dataType.string' })}
+              </Select.Option>
+              <Select.Option value="int">
+                {intl.formatMessage({ id: 'dataType.integer' })}
+              </Select.Option>
+              <Select.Option value="float">
+                {intl.formatMessage({ id: 'dataType.float' })}
+              </Select.Option>
+              <Select.Option value="date">
+                {intl.formatMessage({ id: 'dataType.date' })}
+              </Select.Option>
+              <Select.Option value="datetime">
+                {intl.formatMessage({ id: 'dataType.datetime' })}
+              </Select.Option>
+              <Select.Option value="boolean">
+                {intl.formatMessage({ id: 'dataType.boolean' })}
+              </Select.Option>
             </Select>
           </Form.Item>
           <Form.Item
@@ -587,27 +629,41 @@ const DatasetDetailPage: React.FC = () => {
             initialValue="dimension"
           >
             <Select>
-              <Select.Option value="dimension">{intl.formatMessage({ id: 'field.dimension' })}</Select.Option>
-              <Select.Option value="metric">{intl.formatMessage({ id: 'field.metric' })}</Select.Option>
+              <Select.Option value="dimension">
+                {intl.formatMessage({ id: 'field.dimension' })}
+              </Select.Option>
+              <Select.Option value="metric">
+                {intl.formatMessage({ id: 'field.metric' })}
+              </Select.Option>
             </Select>
           </Form.Item>
           <Form.Item
             name="expression"
             label={intl.formatMessage({ id: 'field.expression' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'field.pleaseEnterExpression' }) }]}
+            rules={[
+              {
+                required: true,
+                message: intl.formatMessage({ id: 'field.pleaseEnterExpression' }),
+              },
+            ]}
           >
             <Input.TextArea placeholder="e.g., price * quantity" rows={3} />
           </Form.Item>
           <Form.Item name="comment" label={intl.formatMessage({ id: 'field.description' })}>
-            <Input.TextArea placeholder={intl.formatMessage({ id: 'field.descriptionPlaceholder' })} rows={2} />
+            <Input.TextArea
+              placeholder={intl.formatMessage({ id: 'field.descriptionPlaceholder' })}
+              rows={2}
+            />
           </Form.Item>
           <Form.Item>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={() => {
-                setVirtualFieldModalVisible(false);
-                form.resetFields();
-                setEditingVirtualField(null);
-              }}>
+              <Button
+                onClick={() => {
+                  setVirtualFieldModalVisible(false);
+                  form.resetFields();
+                  setEditingVirtualField(null);
+                }}
+              >
                 {intl.formatMessage({ id: 'common.cancel' })}
               </Button>
               <Button type="primary" onClick={handleSaveVirtualField}>

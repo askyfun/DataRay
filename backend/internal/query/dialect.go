@@ -310,3 +310,10 @@ func BuildQueryString(dialect DialectType, ast *QueryAST) (string, string) {
 	countSQL := builder.BuildCount(ast)
 	return selectSQL, countSQL
 }
+
+func BuildQueryStringWithBun(dialect DialectType, ast *QueryAST) (string, string) {
+	qb := NewBunSQLBuilder(dialect)
+	selectSQL := qb.BuildSelect(ast)
+	countSQL := qb.BuildCount(ast)
+	return selectSQL, countSQL
+}

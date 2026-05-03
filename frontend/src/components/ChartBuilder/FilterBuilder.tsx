@@ -1,6 +1,6 @@
-import { Select, Input, Button, Space } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import type { FilterCondition, FilterOperator, ChartField } from '../../store';
+import { Button, Input, Select, Space } from 'antd';
+import type { ChartField, FilterCondition, FilterOperator } from '../../store';
 
 interface FilterBuilderProps {
   fields: ChartField[];
@@ -72,6 +72,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
     <div>
       {filters.map((filter, index) => (
         <div
+          key={filter.id}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -109,41 +110,38 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
             options={operatorOptions}
           />
 
-          {needsValue(filter.operator) && (
-            <>
-              {needsTwoValues(filter.operator) ? (
-                <Space>
-                  <Input
-                    style={{ width: 100 }}
-                    placeholder="Min"
-                    value={filter.value ?? ''}
-                    onChange={(e) => handleValueChange(filter.id, e.target.value)}
-                  />
-                  <span>-</span>
-                  <Input
-                    style={{ width: 100 }}
-                    placeholder="Max"
-                    value={filter.valueEnd ?? ''}
-                    onChange={(e) => handleValueEndChange(filter.id, e.target.value)}
-                  />
-                </Space>
-              ) : needsMultiValues(filter.operator) ? (
+          {needsValue(filter.operator) &&
+            (needsTwoValues(filter.operator) ? (
+              <Space>
                 <Input
-                  style={{ flex: 1, minWidth: 150 }}
-                  placeholder="value1, value2, value3"
+                  style={{ width: 100 }}
+                  placeholder="Min"
                   value={filter.value ?? ''}
                   onChange={(e) => handleValueChange(filter.id, e.target.value)}
                 />
-              ) : (
+                <span>-</span>
                 <Input
-                  style={{ flex: 1, minWidth: 120 }}
-                  placeholder="Value"
-                  value={filter.value ?? ''}
-                  onChange={(e) => handleValueChange(filter.id, e.target.value)}
+                  style={{ width: 100 }}
+                  placeholder="Max"
+                  value={filter.valueEnd ?? ''}
+                  onChange={(e) => handleValueEndChange(filter.id, e.target.value)}
                 />
-              )}
-            </>
-          )}
+              </Space>
+            ) : needsMultiValues(filter.operator) ? (
+              <Input
+                style={{ flex: 1, minWidth: 150 }}
+                placeholder="value1, value2, value3"
+                value={filter.value ?? ''}
+                onChange={(e) => handleValueChange(filter.id, e.target.value)}
+              />
+            ) : (
+              <Input
+                style={{ flex: 1, minWidth: 120 }}
+                placeholder="Value"
+                value={filter.value ?? ''}
+                onChange={(e) => handleValueChange(filter.id, e.target.value)}
+              />
+            ))}
 
           <Button
             type="text"
@@ -153,12 +151,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
           />
         </div>
       ))}
-      <Button
-        type="dashed"
-        icon={<PlusOutlined />}
-        onClick={onAdd}
-        style={{ width: '100%' }}
-      >
+      <Button type="dashed" icon={<PlusOutlined />} onClick={onAdd} style={{ width: '100%' }}>
         Add Filter
       </Button>
     </div>

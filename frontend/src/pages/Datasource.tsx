@@ -1,32 +1,32 @@
-import { useEffect, useState } from 'react';
-import { useIntl } from 'react-intl';
 import {
-  Table,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  DatabaseOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+} from '@ant-design/icons';
+import {
   Button,
-  Modal,
+  Card,
   Form,
   Input,
   InputNumber,
+  Modal,
   message,
-  Space,
   Popconfirm,
-  Typography,
-  Card,
-  Tag,
   Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
 } from 'antd';
-import {
-  PlusOutlined,
-  DeleteOutlined,
-  DatabaseOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  ReloadOutlined,
-  EyeOutlined,
-} from '@ant-design/icons';
+import { useEffect, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { useNavigate } from 'react-router-dom';
-import { useStore } from '../store';
 import { DatasourceFormData, DatasourceType } from '../api';
+import { useStore } from '../store';
 
 const { Title, Text } = Typography;
 
@@ -96,7 +96,9 @@ const DatasourcePage: React.FC = () => {
       });
       message.success(intl.formatMessage({ id: 'datasource.connectionSuccess' }));
     } catch (error: any) {
-      message.error(error.response?.data?.message || intl.formatMessage({ id: 'datasource.connectionFailed' }));
+      message.error(
+        error.response?.data?.message || intl.formatMessage({ id: 'datasource.connectionFailed' })
+      );
     } finally {
       setTestLoading(false);
     }
@@ -233,7 +235,14 @@ const DatasourcePage: React.FC = () => {
   return (
     <div style={{ padding: '24px' }}>
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+          }}
+        >
           <div>
             <Title level={3} style={{ margin: 0 }}>
               {intl.formatMessage({ id: 'datasource.dataSources' })}
@@ -266,7 +275,7 @@ const DatasourcePage: React.FC = () => {
 
         <Table
           columns={columns}
-          dataSource={datasources}
+          dataSource={Array.isArray(datasources) ? datasources : []}
           rowKey="id"
           loading={datasourcesLoading}
           pagination={{
@@ -281,7 +290,11 @@ const DatasourcePage: React.FC = () => {
       </Card>
 
       <Modal
-        title={editingId ? intl.formatMessage({ id: 'datasource.edit' }) : intl.formatMessage({ id: 'datasource.add' })}
+        title={
+          editingId
+            ? intl.formatMessage({ id: 'datasource.edit' })
+            : intl.formatMessage({ id: 'datasource.add' })
+        }
         open={modalVisible}
         onCancel={() => {
           setModalVisible(false);
@@ -303,7 +316,9 @@ const DatasourcePage: React.FC = () => {
           <Form.Item
             name="name"
             label={intl.formatMessage({ id: 'datasource.name' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'datasource.pleaseEnterName' }) }]}
+            rules={[
+              { required: true, message: intl.formatMessage({ id: 'datasource.pleaseEnterName' }) },
+            ]}
           >
             <Input placeholder="My Database" />
           </Form.Item>
@@ -311,7 +326,9 @@ const DatasourcePage: React.FC = () => {
           <Form.Item
             name="type"
             label={intl.formatMessage({ id: 'datasource.selectType' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'datasource.selectType' }) }]}
+            rules={[
+              { required: true, message: intl.formatMessage({ id: 'datasource.selectType' }) },
+            ]}
           >
             <Select
               placeholder={intl.formatMessage({ id: 'datasource.selectType' })}
@@ -337,7 +354,9 @@ const DatasourcePage: React.FC = () => {
           <Form.Item
             name="host"
             label={intl.formatMessage({ id: 'datasource.host' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'datasource.pleaseEnterHost' }) }]}
+            rules={[
+              { required: true, message: intl.formatMessage({ id: 'datasource.pleaseEnterHost' }) },
+            ]}
           >
             <Input placeholder="localhost" />
           </Form.Item>
@@ -345,7 +364,9 @@ const DatasourcePage: React.FC = () => {
           <Form.Item
             name="port"
             label={intl.formatMessage({ id: 'datasource.port' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'datasource.pleaseEnterPort' }) }]}
+            rules={[
+              { required: true, message: intl.formatMessage({ id: 'datasource.pleaseEnterPort' }) },
+            ]}
           >
             <InputNumber style={{ width: '100%' }} placeholder="5432" />
           </Form.Item>
@@ -353,7 +374,12 @@ const DatasourcePage: React.FC = () => {
           <Form.Item
             name="database_name"
             label={intl.formatMessage({ id: 'datasource.database' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'datasource.pleaseEnterDatabase' }) }]}
+            rules={[
+              {
+                required: true,
+                message: intl.formatMessage({ id: 'datasource.pleaseEnterDatabase' }),
+              },
+            ]}
           >
             <Input placeholder="mydb" />
           </Form.Item>
@@ -361,15 +387,17 @@ const DatasourcePage: React.FC = () => {
           <Form.Item
             name="username"
             label={intl.formatMessage({ id: 'datasource.username' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'datasource.pleaseEnterUsername' }) }]}
+            rules={[
+              {
+                required: true,
+                message: intl.formatMessage({ id: 'datasource.pleaseEnterUsername' }),
+              },
+            ]}
           >
             <Input placeholder="postgres" autoComplete="username" />
           </Form.Item>
 
-          <Form.Item
-            name="password"
-            label={intl.formatMessage({ id: 'datasource.password' })}
-          >
+          <Form.Item name="password" label={intl.formatMessage({ id: 'datasource.password' })}>
             <Input.Password placeholder="********" autoComplete="current-password" />
           </Form.Item>
 
@@ -398,7 +426,9 @@ const DatasourcePage: React.FC = () => {
                 loading={submitLoading}
                 icon={<PlusOutlined />}
               >
-                {editingId ? intl.formatMessage({ id: 'common.update' }) : intl.formatMessage({ id: 'common.add' })}
+                {editingId
+                  ? intl.formatMessage({ id: 'common.update' })
+                  : intl.formatMessage({ id: 'common.add' })}
               </Button>
             </Space>
           </Form.Item>

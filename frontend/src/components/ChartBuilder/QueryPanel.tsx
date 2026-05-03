@@ -1,5 +1,5 @@
-import { Card, Select, Button, Space } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Select, Space } from 'antd';
 import type { ChartField, QueryConfig } from '../../store';
 
 interface QueryPanelProps {
@@ -38,9 +38,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
     values: string[]
   ) => {
     const groups = type === 'dimension' ? queryConfig.dimensionGroups : queryConfig.metricGroups;
-    const updatedGroups = groups.map((g) =>
-      g.id === groupId ? { ...g, fields: values } : g
-    );
+    const updatedGroups = groups.map((g) => (g.id === groupId ? { ...g, fields: values } : g));
 
     if (type === 'dimension') {
       onUpdateConfig({ dimensionGroups: updatedGroups });
@@ -71,11 +69,13 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           style={{ width: '100%' }}
           placeholder="选择维度字段（支持多选）"
           value={queryConfig.dimensionGroups[0]?.fields || []}
-          onChange={(values) => handleGroupFieldsChange(
-            queryConfig.dimensionGroups[0]?.id || 'default-dim',
-            'dimension',
-            values
-          )}
+          onChange={(values) =>
+            handleGroupFieldsChange(
+              queryConfig.dimensionGroups[0]?.id || 'default-dim',
+              'dimension',
+              values
+            )
+          }
           options={getFieldOptions('dimension')}
         />
         {queryConfig.dimensionGroups.length === 0 && (
@@ -108,7 +108,12 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                 }
               />
             ))}
-            <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={onAddDimensionGroup}>
+            <Button
+              type="dashed"
+              size="small"
+              icon={<PlusOutlined />}
+              onClick={onAddDimensionGroup}
+            >
               添加
             </Button>
           </Space>
@@ -135,11 +140,13 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           style={{ width: '100%' }}
           placeholder="选择指标字段（支持多选）"
           value={queryConfig.metricGroups[0]?.fields || []}
-          onChange={(values) => handleGroupFieldsChange(
-            queryConfig.metricGroups[0]?.id || 'default-metric',
-            'metric',
-            values
-          )}
+          onChange={(values) =>
+            handleGroupFieldsChange(
+              queryConfig.metricGroups[0]?.id || 'default-metric',
+              'metric',
+              values
+            )
+          }
           options={getFieldOptions('metric')}
         />
         {queryConfig.metricGroups.length === 0 && (

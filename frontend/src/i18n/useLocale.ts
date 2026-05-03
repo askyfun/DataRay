@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react'
-import { createIntlCache } from 'react-intl'
+import { useCallback, useState } from 'react';
+import { createIntlCache } from 'react-intl';
 
-export type LocaleType = 'zh-CN' | 'en-US'
+export type LocaleType = 'zh-CN' | 'en-US';
 
-const cache = createIntlCache()
+const cache = createIntlCache();
 
 const messages: Record<LocaleType, Record<string, string>> = {
   'zh-CN': {
@@ -384,7 +384,8 @@ const messages: Record<LocaleType, Record<string, string>> = {
     'dataset.noFields': 'No Fields',
     'dataset.syncFields': 'Sync Fields',
     'dataset.syncSuccess': 'Fields synced successfully',
-    'dataset.syncConfirm': 'Are you sure you want to sync fields? This will overwrite existing field configurations',
+    'dataset.syncConfirm':
+      'Are you sure you want to sync fields? This will overwrite existing field configurations',
     'dataset.datasets': 'Datasets',
     'dataset.manageDatasets': 'Manage your datasets',
     'dataset.selectDatasource': 'Please select a data source',
@@ -600,42 +601,42 @@ const messages: Record<LocaleType, Record<string, string>> = {
     'shareView.chartNotFound': 'Related chart not found',
     'home.welcome': 'Welcome to DataRay',
   },
-}
+};
 
 const getInitialLocale = (): LocaleType => {
-  const stored = localStorage.getItem('locale')
+  const stored = localStorage.getItem('locale');
   if (stored && (stored === 'zh-CN' || stored === 'en-US')) {
-    return stored
+    return stored;
   }
-  const browserLang = navigator.language
+  const browserLang = navigator.language;
   if (browserLang.startsWith('zh')) {
-    return 'zh-CN'
+    return 'zh-CN';
   }
-  return 'en-US'
-}
+  return 'en-US';
+};
 
 export const useLocale = () => {
-  const [locale, setLocaleState] = useState<LocaleType>(getInitialLocale)
+  const [locale, setLocaleState] = useState<LocaleType>(getInitialLocale);
 
   const setLocale = useCallback((newLocale: LocaleType) => {
-    localStorage.setItem('locale', newLocale)
-    setLocaleState(newLocale)
-  }, [])
+    localStorage.setItem('locale', newLocale);
+    setLocaleState(newLocale);
+  }, []);
 
   const t = useCallback(
     (id: string, values?: Record<string, string | number>): string => {
-      let message = messages[locale][id] || id
+      let message = messages[locale][id] || id;
       if (values) {
         Object.entries(values).forEach(([key, value]) => {
-          message = message.replace(`{${key}}`, String(value))
-        })
+          message = message.replace(`{${key}}`, String(value));
+        });
       }
-      return message
+      return message;
     },
     [locale]
-  )
+  );
 
-  return { locale, setLocale, t, messages: messages[locale] }
-}
+  return { locale, setLocale, t, messages: messages[locale] };
+};
 
-export { messages, cache }
+export { cache, messages };

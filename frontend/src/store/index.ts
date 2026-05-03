@@ -1,22 +1,22 @@
 import { create } from 'zustand';
 import {
-  Datasource,
-  DatasourceFormData,
-  Dataset,
-  DatasetFormData,
+  AxisResponse,
   Chart,
   ChartFormData,
-  ShareFormData,
-  DatasetColumn,
-  datasourcesApi,
-  datasetsApi,
-  chartsApi,
-  sharesApi,
   ChartQueryRequest,
   ChartQueryResponse,
-  TableResponse,
+  chartsApi,
+  Dataset,
+  DatasetColumn,
+  DatasetFormData,
+  Datasource,
+  DatasourceFormData,
+  datasetsApi,
+  datasourcesApi,
   PieResponse,
-  AxisResponse,
+  ShareFormData,
+  sharesApi,
+  TableResponse,
 } from '../api';
 
 // Field types for chart builder
@@ -39,7 +39,18 @@ export interface FieldGroup {
 }
 
 // 过滤条件操作符
-export type FilterOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'like' | 'in' | 'between' | 'isNull' | 'isNotNull';
+export type FilterOperator =
+  | 'eq'
+  | 'neq'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'like'
+  | 'in'
+  | 'between'
+  | 'isNull'
+  | 'isNotNull';
 
 // 过滤条件
 export interface FilterCondition {
@@ -207,10 +218,10 @@ export const useStore = create<AppState>((set) => ({
     set({ datasourcesLoading: true, datasourcesError: null });
     try {
       const response = await datasourcesApi.getAll();
-      set({ datasources: response.data, datasourcesLoading: false });
+      set({ datasources: response.data.data, datasourcesLoading: false });
     } catch (error: any) {
       set({
-        datasourcesError: error.response?.data?.message || error.message,
+        datasourcesError: error.message || 'Failed to fetch',
         datasourcesLoading: false,
       });
     }
@@ -218,26 +229,27 @@ export const useStore = create<AppState>((set) => ({
 
   addDatasource: async (data: DatasourceFormData) => {
     const response = await datasourcesApi.create(data);
+    const item = response.data.data;
     set((state) => ({
-      datasources: [...state.datasources, response.data],
+      datasources: [...state.datasources, item],
     }));
-    return response.data;
+    return item;
   },
 
   updateDatasource: async (id: number, data: DatasourceFormData) => {
     const response = await datasourcesApi.update(id, data);
+    const item = response.data.data;
     set((state) => ({
-      datasources: state.datasources.map((ds) => (ds.id === id ? response.data : ds)),
+      datasources: state.datasources.map((ds) => (ds.id === id ? item : ds)),
     }));
-    return response.data;
+    return item;
   },
 
   deleteDatasource: async (id: number) => {
     await datasourcesApi.delete(id);
     set((state) => ({
       datasources: state.datasources.filter((ds) => ds.id !== id),
-      selectedDatasourceId:
-        state.selectedDatasourceId === id ? null : state.selectedDatasourceId,
+      selectedDatasourceId: state.selectedDatasourceId === id ? null : state.selectedDatasourceId,
     }));
   },
 
@@ -250,10 +262,10 @@ export const useStore = create<AppState>((set) => ({
     set({ datasetsLoading: true, datasetsError: null });
     try {
       const response = await datasetsApi.getAll();
-      set({ datasets: response.data, datasetsLoading: false });
+      set({ datasets: response.data.data, datasetsLoading: false });
     } catch (error: any) {
       set({
-        datasetsError: error.response?.data?.message || error.message,
+        datasetsError: error.message || 'Failed to fetch',
         datasetsLoading: false,
       });
     }
@@ -261,26 +273,27 @@ export const useStore = create<AppState>((set) => ({
 
   addDataset: async (data: DatasetFormData) => {
     const response = await datasetsApi.create(data);
+    const item = response.data.data;
     set((state) => ({
-      datasets: [...state.datasets, response.data],
+      datasets: [...state.datasets, item],
     }));
-    return response.data;
+    return item;
   },
 
   updateDataset: async (id: number, data: DatasetFormData) => {
     const response = await datasetsApi.update(id, data);
+    const item = response.data.data;
     set((state) => ({
-      datasets: state.datasets.map((ds) => (ds.id === id ? response.data : ds)),
+      datasets: state.datasets.map((ds) => (ds.id === id ? item : ds)),
     }));
-    return response.data;
+    return item;
   },
 
   deleteDataset: async (id: number) => {
     await datasetsApi.delete(id);
     set((state) => ({
       datasets: state.datasets.filter((ds) => ds.id !== id),
-      selectedDatasetId:
-        state.selectedDatasetId === id ? null : state.selectedDatasetId,
+      selectedDatasetId: state.selectedDatasetId === id ? null : state.selectedDatasetId,
     }));
   },
 
@@ -293,10 +306,10 @@ export const useStore = create<AppState>((set) => ({
     set({ chartsLoading: true, chartsError: null });
     try {
       const response = await chartsApi.getAll();
-      set({ charts: response.data, chartsLoading: false });
+      set({ charts: response.data.data, chartsLoading: false });
     } catch (error: any) {
       set({
-        chartsError: error.response?.data?.message || error.message,
+        chartsError: error.message || 'Failed to fetch',
         chartsLoading: false,
       });
     }
@@ -304,26 +317,27 @@ export const useStore = create<AppState>((set) => ({
 
   addChart: async (data: ChartFormData) => {
     const response = await chartsApi.create(data);
+    const item = response.data.data;
     set((state) => ({
-      charts: [...state.charts, response.data],
+      charts: [...state.charts, item],
     }));
-    return response.data;
+    return item;
   },
 
   updateChart: async (id: number, data: Partial<ChartFormData>) => {
     const response = await chartsApi.update(id, data);
+    const item = response.data.data;
     set((state) => ({
-      charts: state.charts.map((c) => (c.id === id ? response.data : c)),
+      charts: state.charts.map((c) => (c.id === id ? item : c)),
     }));
-    return response.data;
+    return item;
   },
 
   deleteChart: async (id: number) => {
     await chartsApi.delete(id);
     set((state) => ({
       charts: state.charts.filter((c) => c.id !== id),
-      selectedChartId:
-        state.selectedChartId === id ? null : state.selectedChartId,
+      selectedChartId: state.selectedChartId === id ? null : state.selectedChartId,
     }));
   },
 
@@ -334,7 +348,7 @@ export const useStore = create<AppState>((set) => ({
   // Shares actions
   createShare: async (data: ShareFormData) => {
     const response = await sharesApi.create(data);
-    return response.data.token;
+    return response.data.data.token;
   },
 
   // Chart Builder actions
@@ -342,21 +356,25 @@ export const useStore = create<AppState>((set) => ({
     set({ chartBuilderFieldsLoading: true });
     try {
       const response = await datasetsApi.getColumns(datasetId);
-      const columns = response.data;
+      const columns = response.data.data;
 
       // 使用后端返回的 role，如果没有则自动推断
       const fields: ChartField[] = columns.map((col: DatasetColumn, index: number) => ({
         id: `field-${index}`,
         name: col.name,
-        type: col.role || (['int', 'float', 'decimal', 'numeric', 'double', 'real'].includes(col.type?.toLowerCase() ?? '')
-          ? 'metric'
-          : 'dimension'),
+        type:
+          col.role ||
+          (['int', 'float', 'decimal', 'numeric', 'double', 'real'].includes(
+            col.type?.toLowerCase() ?? ''
+          )
+            ? 'metric'
+            : 'dimension'),
         dataType: col.type,
         comment: col.comment,
       }));
 
       set({ chartBuilderFields: fields, chartBuilderFieldsLoading: false });
-    } catch (error: any) {
+    } catch (_error: any) {
       set({ chartBuilderFields: [], chartBuilderFieldsLoading: false });
     }
   },
@@ -371,8 +389,8 @@ export const useStore = create<AppState>((set) => ({
     set({ chartDataLoading: true });
     try {
       const response = await chartsApi.getChartData(chartId);
-      set({ chartData: response.data, chartDataLoading: false });
-    } catch (error: any) {
+      set({ chartData: response.data.data, chartDataLoading: false });
+    } catch (_error: any) {
       set({ chartData: [], chartDataLoading: false });
     }
   },
@@ -492,18 +510,19 @@ export const useStore = create<AppState>((set) => ({
     set((state) => {
       const existingFields = state.queryConfig.dimensionGroups[0]?.fields || [];
       if (existingFields.includes(field.id)) return state;
-      
+
       const newGroup = {
         id: 'dim-group-main',
         fields: [...existingFields, field.id],
       };
-      
+
       return {
         queryConfig: {
           ...state.queryConfig,
-          dimensionGroups: state.queryConfig.dimensionGroups.length > 0
-            ? [{ ...state.queryConfig.dimensionGroups[0], fields: newGroup.fields }]
-            : [newGroup],
+          dimensionGroups:
+            state.queryConfig.dimensionGroups.length > 0
+              ? [{ ...state.queryConfig.dimensionGroups[0], fields: newGroup.fields }]
+              : [newGroup],
         },
       };
     });
@@ -525,18 +544,19 @@ export const useStore = create<AppState>((set) => ({
     set((state) => {
       const existingFields = state.queryConfig.metricGroups[0]?.fields || [];
       if (existingFields.includes(field.id)) return state;
-      
+
       const newGroup = {
         id: 'metric-group-main',
         fields: [...existingFields, field.id],
       };
-      
+
       return {
         queryConfig: {
           ...state.queryConfig,
-          metricGroups: state.queryConfig.metricGroups.length > 0
-            ? [{ ...state.queryConfig.metricGroups[0], fields: newGroup.fields }]
-            : [newGroup],
+          metricGroups:
+            state.queryConfig.metricGroups.length > 0
+              ? [{ ...state.queryConfig.metricGroups[0], fields: newGroup.fields }]
+              : [newGroup],
         },
       };
     });
@@ -574,8 +594,8 @@ export const useStore = create<AppState>((set) => ({
     set({ chartDataLoading: true });
     try {
       const response = await chartsApi.executeQuery(datasetId, config);
-      set({ chartData: response.data, chartDataLoading: false });
-    } catch (error: any) {
+      set({ chartData: response.data.data, chartDataLoading: false });
+    } catch (_error: any) {
       set({ chartData: [], chartDataLoading: false });
     }
   },
@@ -584,14 +604,13 @@ export const useStore = create<AppState>((set) => ({
     set({ chartDataLoading: true });
     try {
       const response = await chartsApi.executeChartQuery(request);
-      const fullResponse = response.data; // 包含 data + select_sql + count_sql
-      const responseData = fullResponse.data;
+      const responseData = response.data.data; // 包含 data + select_sql + count_sql
 
       if (request.chart_type === 'table' && responseData && 'pagination' in responseData) {
         const tableData = responseData as TableResponse;
         set({
           chartData: tableData.data,
-          chartQueryResponse: fullResponse as ChartQueryResponse,
+          chartQueryResponse: responseData as ChartQueryResponse,
           tablePagination: {
             page: tableData.pagination.page,
             pageSize: tableData.pagination.page_size,
@@ -608,10 +627,14 @@ export const useStore = create<AppState>((set) => ({
         }));
         set({
           chartData: transformedData,
-          chartQueryResponse: fullResponse as ChartQueryResponse,
+          chartQueryResponse: responseData as ChartQueryResponse,
           chartDataLoading: false,
         });
-      } else if (request.chart_type === 'bar' || request.chart_type === 'line' || request.chart_type === 'area') {
+      } else if (
+        request.chart_type === 'bar' ||
+        request.chart_type === 'line' ||
+        request.chart_type === 'area'
+      ) {
         const axisData = responseData as AxisResponse;
         const transformedData = axisData.x_axis.map((xVal: string, idx: number) => {
           const row: Record<string, any> = { [request.dims[0] || 'x']: xVal };
@@ -622,7 +645,7 @@ export const useStore = create<AppState>((set) => ({
         });
         set({
           chartData: transformedData,
-          chartQueryResponse: fullResponse as ChartQueryResponse,
+          chartQueryResponse: responseData as ChartQueryResponse,
           chartDataLoading: false,
         });
       } else {

@@ -1,24 +1,15 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
 import {
-  Card,
-  Typography,
-  Spin,
-  Input,
-  Button,
-  Space,
-  Result,
-  Tag,
-} from 'antd';
-import {
-  LockOutlined,
-  ShareAltOutlined,
   BarChartOutlined,
   LineChartOutlined,
+  LockOutlined,
   PieChartOutlined,
+  ShareAltOutlined,
 } from '@ant-design/icons';
+import { Button, Card, Input, Result, Space, Spin, Tag, Typography } from 'antd';
 import ReactECharts from 'echarts-for-react';
-import { sharesApi, chartsApi, Chart } from '../api';
+import { useCallback, useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { Chart, chartsApi, sharesApi } from '../api';
 
 const { Title, Text } = Typography;
 
@@ -50,19 +41,31 @@ const ShareView: React.FC = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
 
-  // Fetch share info on mount
-  useEffect(() => {
-    if (token) {
-      fetchShareInfo();
+  // Fetch chart data
+  const fetchChart = useCallback(async (chartId: number) => {
+    setChartDataLoading(true);
+    try {
+      const [chartResponse, dataResponse] = await Promise.all([
+        chartsApi.getById(chartId),
+        chartsApi.getChartData(chartId),
+      ]);
+
+      setChart(chartResponse.data.data);
+      setChartData(dataResponse.data.data);
+    } catch (error: any) {
+      console.error('Failed to fetch chart:', error);
+    } finally {
+      setChartDataLoading(false);
     }
-  }, [token]);
+  }, []);
 
   // Fetch share info
-  const fetchShareInfo = async () => {
+  const fetchShareInfo = useCallback(async () => {
+    if (!token) return;
     setLoading(true);
     try {
-      const response = await sharesApi.getByToken(token!);
-      const share = response.data;
+      const response = await sharesApi.getByToken(token);
+      const share = response.data.data;
 
       // Check if share has expired
       if (share.expires_at && new Date(share.expires_at) < new Date()) {
@@ -86,7 +89,7 @@ const ShareView: React.FC = () => {
       if (error.response?.status === 401 || error.response?.status === 403) {
         // Password required
         setNeedsPassword(true);
-        setShareInfo(error.response?.data?.share || { id: 0, token: token!, chart_id: 0 });
+        setShareInfo(error.response?.data?.share || { id: 0, token: token, chart_id: 0 });
       } else {
         // Other error
         console.error('Failed to fetch share:', error);
@@ -94,7 +97,14 @@ const ShareView: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, fetchChart]);
+
+  // Fetch share info on mount
+  useEffect(() => {
+    if (token) {
+      fetchShareInfo();
+    }
+  }, [token, fetchShareInfo]);
 
   // Verify password and fetch chart
   const handleVerifyPassword = async () => {
@@ -107,9 +117,10 @@ const ShareView: React.FC = () => {
     setPasswordError(null);
 
     try {
-      const response = await sharesApi.verifyPassword(token!, password);
+      if (!token) return;
+      const response = await sharesApi.verifyPassword(token, password);
       setNeedsPassword(false);
-      await fetchChart(response.data.chart_id);
+      await fetchChart(response.data.data.chart_id);
     } catch (error: any) {
       if (error.response?.status === 401 || error.response?.status === 403) {
         setPasswordError('Invalid password');
@@ -118,24 +129,6 @@ const ShareView: React.FC = () => {
       }
     } finally {
       setAuthLoading(false);
-    }
-  };
-
-  // Fetch chart data
-  const fetchChart = async (chartId: number) => {
-    setChartDataLoading(true);
-    try {
-      const [chartResponse, dataResponse] = await Promise.all([
-        chartsApi.getById(chartId),
-        chartsApi.getChartData(chartId),
-      ]);
-
-      setChart(chartResponse.data);
-      setChartData(dataResponse.data);
-    } catch (error: any) {
-      console.error('Failed to fetch chart:', error);
-    } finally {
-      setChartDataLoading(false);
     }
   };
 
@@ -161,7 +154,8 @@ const ShareView: React.FC = () => {
       return null;
     }
 
-    const xAxisData = chartData.map((item) => item[config.xAxisField!]);
+    const xAxisField = config.xAxisField;
+    const xAxisData = chartData.map((item) => item[xAxisField]);
 
     const commonOptions = {
       title: {
@@ -223,7 +217,7 @@ const ShareView: React.FC = () => {
               type: 'pie',
               radius: '50%',
               data: chartData.map((item) => ({
-                name: item[config.xAxisField!],
+                name: item[xAxisField],
                 value: item[config.yAxisFields[0] || ''],
               })),
               emphasis: {
@@ -249,7 +243,6 @@ const ShareView: React.FC = () => {
         return <LineChartOutlined />;
       case 'pie':
         return <PieChartOutlined />;
-      case 'bar':
       default:
         return <BarChartOutlined />;
     }
@@ -258,7 +251,15 @@ const ShareView: React.FC = () => {
   // Loading state
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f0f2f5' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          background: '#f0f2f5',
+        }}
+      >
         <Spin size="large" />
       </div>
     );
@@ -267,7 +268,16 @@ const ShareView: React.FC = () => {
   // Expired share
   if (shareInfo?.expires_at && new Date(shareInfo.expires_at) < new Date()) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f0f2f5', padding: 24 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          background: '#f0f2f5',
+          padding: 24,
+        }}
+      >
         <Result
           status="warning"
           title="Share Expired"
@@ -280,7 +290,16 @@ const ShareView: React.FC = () => {
   // Password input
   if (needsPassword) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f0f2f5', padding: 24 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          background: '#f0f2f5',
+          padding: 24,
+        }}
+      >
         <Card style={{ width: 400, textAlign: 'center' }}>
           <div style={{ marginBottom: 24 }}>
             <LockOutlined style={{ fontSize: 48, color: '#faad14' }} />
@@ -305,12 +324,7 @@ const ShareView: React.FC = () => {
                 {passwordError}
               </Text>
             )}
-            <Button
-              type="primary"
-              loading={authLoading}
-              onClick={handleVerifyPassword}
-              block
-            >
+            <Button type="primary" loading={authLoading} onClick={handleVerifyPassword} block>
               View Chart
             </Button>
           </Space>
@@ -326,7 +340,14 @@ const ShareView: React.FC = () => {
     <div style={{ minHeight: '100vh', background: '#f0f2f5', padding: 24 }}>
       <Card>
         {/* Header */}
-        <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div
+          style={{
+            marginBottom: 24,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <Space>
             {chart && getChartTypeIcon(chart.chart_type)}
             <Title level={4} style={{ margin: 0 }}>

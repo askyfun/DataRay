@@ -1,53 +1,53 @@
-import { useIntl } from 'react-intl'
-import { useEffect, useState } from 'react'
-import { Routes, Route, Link, useLocation } from 'react-router-dom'
-import { Layout, Menu, Typography, Select, Space, Drawer, Button } from 'antd'
 import {
-  DatabaseOutlined,
   AppstoreOutlined,
   BarChartOutlined,
-  ShareAltOutlined,
   BuildOutlined,
+  DatabaseOutlined,
   GlobalOutlined,
   MenuOutlined,
-} from '@ant-design/icons'
-import DatasourcePage from './pages/Datasource'
-import DatasourceDetailPage from './pages/DatasourceDetail'
-import DatasetPage from './pages/Dataset'
-import DatasetDetail from './pages/DatasetDetail'
-import DatasetEdit from './pages/DatasetEdit'
-import ChartBuilder from './pages/ChartBuilder'
-import ChartsPage from './pages/Charts'
-import SharePage from './pages/Share'
-import ShareView from './pages/ShareView'
-import { useLocale } from './i18n/useLocale'
+  ShareAltOutlined,
+} from '@ant-design/icons';
+import { Button, Drawer, Layout, Menu, Select, Space, Typography } from 'antd';
+import { useEffect, useState } from 'react';
+import { useIntl } from 'react-intl';
+import { Link, Route, Routes, useLocation } from 'react-router-dom';
+import { useLocale } from './i18n/useLocale';
+import ChartBuilder from './pages/ChartBuilder';
+import ChartsPage from './pages/Charts';
+import DatasetPage from './pages/Dataset';
+import DatasetDetail from './pages/DatasetDetail';
+import DatasetEdit from './pages/DatasetEdit';
+import DatasourcePage from './pages/Datasource';
+import DatasourceDetailPage from './pages/DatasourceDetail';
+import SharePage from './pages/Share';
+import ShareView from './pages/ShareView';
 
-const { Header, Content, Footer } = Layout
-const { Title } = Typography
+const { Header, Content, Footer } = Layout;
+const { Title } = Typography;
 
 const App: React.FC = () => {
-  const intl = useIntl()
-  const { locale, setLocale } = useLocale()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
-  const location = useLocation()
+  const intl = useIntl();
+  const { locale, setLocale } = useLocale();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
+    setMobileMenuOpen(false);
+  }, []);
 
   useEffect(() => {
-    document.title = 'DataRay'
-  }, [])
+    document.title = 'DataRay';
+  }, []);
 
   const menuItems = [
     {
@@ -75,21 +75,25 @@ const App: React.FC = () => {
       icon: <ShareAltOutlined />,
       label: <Link to="/shares">{intl.formatMessage({ id: 'nav.shares' })}</Link>,
     },
-  ]
+  ];
 
   return (
     <Layout className="layout" style={{ minHeight: '100vh' }}>
-      <a href="#main-content" className="skip-link">Skip to main content</a>
-      <Header style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        padding: isMobile ? '0 12px' : '0 16px', 
-        height: 48, 
-        lineHeight: '48px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-      }}>
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+      <Header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          padding: isMobile ? '0 12px' : '0 16px',
+          height: 48,
+          lineHeight: '48px',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+        }}
+      >
         {isMobile && (
           <Button
             type="text"
@@ -114,7 +118,13 @@ const App: React.FC = () => {
               defaultSelectedKeys={['/datasources']}
               selectedKeys={[location.pathname]}
               items={menuItems}
-              style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', lineHeight: '46px' }}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: 'transparent',
+                border: 'none',
+                lineHeight: '46px',
+              }}
               theme="dark"
             />
             <Space style={{ marginLeft: 16 }}>
@@ -132,7 +142,7 @@ const App: React.FC = () => {
           </>
         ) : null}
       </Header>
-      
+
       {/* Mobile Menu Drawer */}
       <Drawer
         title={
@@ -145,8 +155,7 @@ const App: React.FC = () => {
         onClose={() => setMobileMenuOpen(false)}
         open={mobileMenuOpen}
         width={280}
-        bodyStyle={{ padding: 0 }}
-        headerStyle={{ background: '#001529' }}
+        styles={{ body: { padding: 0 }, header: { background: '#001529' } }}
       >
         <Menu
           mode="inline"
@@ -175,7 +184,12 @@ const App: React.FC = () => {
         <Layout style={{ padding: '0' }}>
           <Content id="main-content" style={{ background: '#fff', minHeight: 280 }}>
             <Routes>
-              <Route path="/" element={<div style={{ padding: 24 }}>{intl.formatMessage({ id: 'home.welcome' })}</div>} />
+              <Route
+                path="/"
+                element={
+                  <div style={{ padding: 24 }}>{intl.formatMessage({ id: 'home.welcome' })}</div>
+                }
+              />
               <Route path="/datasources" element={<DatasourcePage />} />
               <Route path="/datasources/:id" element={<DatasourceDetailPage />} />
               <Route path="/datasets" element={<DatasetPage />} />
@@ -190,11 +204,9 @@ const App: React.FC = () => {
           </Content>
         </Layout>
       </Layout>
-      <Footer style={{ textAlign: 'center' }}>
-        DataRay ©2026 Created with React + Ant Design
-      </Footer>
+      <Footer style={{ textAlign: 'center' }}>DataRay ©2026 Created with React + Ant Design</Footer>
     </Layout>
-  )
-}
+  );
+};
 
-export default App
+export default App;

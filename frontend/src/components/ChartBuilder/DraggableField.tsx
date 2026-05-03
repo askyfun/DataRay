@@ -1,6 +1,6 @@
-import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { Tag } from 'antd';
+import React from 'react';
 import type { ChartField } from '@/store';
 
 export interface DraggableFieldProps {

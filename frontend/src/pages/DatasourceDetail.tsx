@@ -1,26 +1,16 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  Card,
-  Typography,
-  Table,
-  Tag,
-  Button,
-  Space,
-  Spin,
-  message,
-  Breadcrumb,
-} from 'antd';
-import {
-  DatabaseOutlined,
-  TableOutlined,
-  ColumnWidthOutlined,
   ArrowLeftOutlined,
+  ColumnWidthOutlined,
+  DatabaseOutlined,
   ReloadOutlined,
+  TableOutlined,
 } from '@ant-design/icons';
-import { useStore } from '../store';
+import { Breadcrumb, Button, Card, message, Space, Spin, Table, Tag, Typography } from 'antd';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import type { ColumnInfo, TableInfo } from '../api';
 import { datasourcesApi } from '../api';
-import type { TableInfo, ColumnInfo } from '../api';
+import { useStore } from '../store';
 
 const { Title, Text } = Typography;
 
@@ -54,23 +44,23 @@ const DatasourceDetailPage: React.FC = () => {
     }
   }, [datasources.length, fetchDatasources]);
 
-  const loadTables = async () => {
+  const loadTables = useCallback(async () => {
     setTablesLoading(true);
     try {
       const response = await datasourcesApi.getTables(datasourceId);
-      setTables(response.data);
+      setTables(response.data.data);
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Failed to load tables');
     } finally {
       setTablesLoading(false);
     }
-  };
+  }, [datasourceId]);
 
   useEffect(() => {
     if (datasourceId) {
       loadTables();
     }
-  }, [datasourceId]);
+  }, [datasourceId, loadTables]);
 
   const loadColumns = async (tableName: string) => {
     if (columnsCache[tableName]) {
@@ -80,7 +70,7 @@ const DatasourceDetailPage: React.FC = () => {
     setLoadingColumns((prev) => ({ ...prev, [tableName]: true }));
     try {
       const response = await datasourcesApi.getTableColumns(datasourceId, tableName);
-      setColumnsCache((prev) => ({ ...prev, [tableName]: response.data }));
+      setColumnsCache((prev) => ({ ...prev, [tableName]: response.data.data }));
     } catch (error: any) {
       message.error(error.response?.data?.message || `Failed to load columns for ${tableName}`);
     } finally {
@@ -180,17 +170,10 @@ const DatasourceDetailPage: React.FC = () => {
             </Text>
           </div>
           <Space>
-            <Button
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate('/datasources')}
-            >
+            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/datasources')}>
               Back
             </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={loadTables}
-              loading={tablesLoading}
-            >
+            <Button icon={<ReloadOutlined />} onClick={loadTables} loading={tablesLoading}>
               Refresh Tables
             </Button>
           </Space>

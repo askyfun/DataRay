@@ -1,7 +1,15 @@
-import { useEffect, useState, useRef } from 'react';
-import { useIntl } from 'react-intl';
-import { useNavigate } from 'react-router-dom';
-import * as echarts from 'echarts';
+import {
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  DatabaseOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  FunctionOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  TableOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -9,8 +17,8 @@ import {
   Drawer,
   Form,
   Input,
-  message,
   Modal,
+  message,
   Popconfirm,
   Select,
   Space,
@@ -21,22 +29,22 @@ import {
   Tag,
   Typography,
 } from 'antd';
-import {
-  DeleteOutlined,
-  DatabaseOutlined,
-  EditOutlined,
-  EyeOutlined,
-  PlusOutlined,
-  ReloadOutlined,
-  TableOutlined,
-  FunctionOutlined,
-  ArrowRightOutlined,
-  ArrowLeftOutlined,
-} from '@ant-design/icons';
-import { useStore } from '../store';
-import { DatasetFormData, DatasetColumn, DatasetPreview, ColumnInfo, datasourcesApi, datasetsApi, TableInfo } from '../api';
+import * as echarts from 'echarts';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useIntl } from 'react-intl';
+import { useNavigate } from 'react-router-dom';
 import type { DataType } from '../api';
+import {
+  ColumnInfo,
+  DatasetColumn,
+  DatasetFormData,
+  DatasetPreview,
+  datasetsApi,
+  datasourcesApi,
+  TableInfo,
+} from '../api';
 import { toStandardType } from '../api/datatypes';
+import { useStore } from '../store';
 
 const { Title, Text } = Typography;
 
@@ -89,7 +97,13 @@ const DatasetPage: React.FC = () => {
   // 第一步验证
   const validateStep1 = async () => {
     try {
-      const values = await form.validateFields(['name', 'datasource_id', 'query_type', 'table_name', 'query_sql']);
+      const values = await form.validateFields([
+        'name',
+        'datasource_id',
+        'query_type',
+        'table_name',
+        'query_sql',
+      ]);
       if (!values.name || !values.datasource_id) {
         message.error(intl.formatMessage({ id: 'dataset.pleaseFillRequiredFields' }));
         return false;
@@ -133,8 +147,8 @@ const DatasetPage: React.FC = () => {
         querySql || '',
         queryType
       );
-      setModalPreviewData(response.data || null);
-    } catch (error: any) {
+      setModalPreviewData(response.data.data || null);
+    } catch (_error: any) {
       setModalPreviewData(null);
     } finally {
       setModalPreviewLoading(false);
@@ -152,8 +166,14 @@ const DatasetPage: React.FC = () => {
   const handleFinalSubmit = async () => {
     setSubmitLoading(true);
     try {
-      const values = form.getFieldsValue(['name', 'datasource_id', 'query_type', 'table_name', 'query_sql']);
-      
+      const values = form.getFieldsValue([
+        'name',
+        'datasource_id',
+        'query_type',
+        'table_name',
+        'query_sql',
+      ]);
+
       const data: DatasetFormData = {
         name: values.name,
         datasource_id: values.datasource_id,
@@ -172,7 +192,7 @@ const DatasetPage: React.FC = () => {
       message.success(intl.formatMessage({ id: 'common.success' }));
       setModalVisible(false);
       resetCreateFlow();
-      
+
       // 跳转到数据集详情页
       navigate(`/datasets/${newDataset.id}`);
     } catch (error: any) {
@@ -217,12 +237,10 @@ const DatasetPage: React.FC = () => {
     try {
       const values = await virtualFieldForm.validateFields();
       let updatedColumns: DatasetColumn[];
-      
+
       if (editingVirtualField) {
-        updatedColumns = datasetColumns.map(col => 
-          col.name === editingVirtualField.name 
-            ? { ...col, ...values }
-            : col
+        updatedColumns = datasetColumns.map((col) =>
+          col.name === editingVirtualField.name ? { ...col, ...values } : col
         );
       } else {
         const newField: DatasetColumn = {
@@ -239,9 +257,13 @@ const DatasetPage: React.FC = () => {
         setSavingColumns(true);
         await datasetsApi.updateColumns(editingDataset.id, updatedColumns);
         setDatasetColumns(updatedColumns);
-        message.success(editingVirtualField ? intl.formatMessage({ id: 'virtualField.fieldUpdated' }) : intl.formatMessage({ id: 'virtualField.fieldAdded' }));
+        message.success(
+          editingVirtualField
+            ? intl.formatMessage({ id: 'virtualField.fieldUpdated' })
+            : intl.formatMessage({ id: 'virtualField.fieldAdded' })
+        );
       }
-      
+
       setVirtualFieldModalVisible(false);
       virtualFieldForm.resetFields();
       setEditingVirtualField(null);
@@ -249,7 +271,9 @@ const DatasetPage: React.FC = () => {
       if (error.errorFields) {
         return;
       }
-      message.error(error.response?.data?.message || intl.formatMessage({ id: 'virtualField.saveFailed' }));
+      message.error(
+        error.response?.data?.message || intl.formatMessage({ id: 'virtualField.saveFailed' })
+      );
     } finally {
       setSavingColumns(false);
     }
@@ -257,16 +281,18 @@ const DatasetPage: React.FC = () => {
 
   const handleDeleteVirtualField = async (fieldName: string) => {
     if (!editingDataset) return;
-    
-      const updatedColumns = (datasetColumns || []).filter(col => col.name !== fieldName);
-    
+
+    const updatedColumns = (datasetColumns || []).filter((col) => col.name !== fieldName);
+
     try {
       setSavingColumns(true);
       await datasetsApi.updateColumns(editingDataset.id, updatedColumns);
       setDatasetColumns(updatedColumns);
       message.success(intl.formatMessage({ id: 'virtualField.fieldDeleted' }));
     } catch (error: any) {
-      message.error(error.response?.data?.message || intl.formatMessage({ id: 'virtualField.saveFailed' }));
+      message.error(
+        error.response?.data?.message || intl.formatMessage({ id: 'virtualField.saveFailed' })
+      );
     } finally {
       setSavingColumns(false);
     }
@@ -292,7 +318,7 @@ const DatasetPage: React.FC = () => {
 
   // 渲染字段分布图表
   useEffect(() => {
-    if (!fieldDistribution || !fieldDistribution.distribution || !chartRef.current) {
+    if (!fieldDistribution?.distribution || !chartRef.current) {
       return;
     }
 
@@ -305,7 +331,7 @@ const DatasetPage: React.FC = () => {
 
     const data = fieldDistribution.distribution.slice(0, 15).map((item: any) => ({
       value: item.count,
-      name: String(item.value ?? '(null)')
+      name: String(item.value ?? '(null)'),
     }));
 
     const option: echarts.EChartsOption = {
@@ -316,21 +342,23 @@ const DatasetPage: React.FC = () => {
           const item = params[0];
           const dist = fieldDistribution.distribution[item.dataIndex];
           return `${item.name}<br/>计数: ${item.value}<br/>占比: ${dist.percentage}%`;
-        }
+        },
       },
       grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
       xAxis: {
         type: 'category',
-        data: data.map((d: any) => d.name.length > 10 ? d.name.slice(0, 10) + '...' : d.name),
-        axisLabel: { interval: 0, rotate: 45 }
+        data: data.map((d: any) => (d.name.length > 10 ? `${d.name.slice(0, 10)}...` : d.name)),
+        axisLabel: { interval: 0, rotate: 45 },
       },
       yAxis: { type: 'value', name: '计数' },
-      series: [{
-        type: 'bar',
-        data: data,
-        itemStyle: { color: '#1890ff' },
-        barWidth: '60%'
-      }]
+      series: [
+        {
+          type: 'bar',
+          data: data,
+          itemStyle: { color: '#1890ff' },
+          barWidth: '60%',
+        },
+      ],
     };
 
     chart.setOption(option);
@@ -350,6 +378,23 @@ const DatasetPage: React.FC = () => {
     }
   }, [datasetsError]);
 
+  // Fetch tables from datasource
+  const fetchTables = useCallback(
+    async (datasourceId: number) => {
+      setTablesLoading(true);
+      try {
+        const response = await datasourcesApi.getTables(datasourceId);
+        setTables(response.data.data || []);
+      } catch (error: any) {
+        message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.error' }));
+        setTables([]);
+      } finally {
+        setTablesLoading(false);
+      }
+    },
+    [intl]
+  );
+
   // Fetch tables when datasource changes
   useEffect(() => {
     if (selectedDatasourceId && queryType === 'table') {
@@ -357,21 +402,7 @@ const DatasetPage: React.FC = () => {
     } else {
       setTables([]);
     }
-  }, [selectedDatasourceId, queryType]);
-
-  // Fetch tables from datasource
-  const fetchTables = async (datasourceId: number) => {
-    setTablesLoading(true);
-    try {
-      const response = await datasourcesApi.getTables(datasourceId);
-      setTables(response.data || []);
-    } catch (error: any) {
-      message.error(error.response?.data?.message || intl.formatMessage({ id: 'common.error' }));
-      setTables([]);
-    } finally {
-      setTablesLoading(false);
-    }
-  };
+  }, [selectedDatasourceId, queryType, fetchTables]);
 
   // Handle datasource selection change
   const handleDatasourceChange = (value: number) => {
@@ -394,21 +425,23 @@ const DatasetPage: React.FC = () => {
   const generateDefaultColumns = async (datasourceId: number, tableName: string) => {
     try {
       const response = await datasourcesApi.getTableColumns(datasourceId, tableName);
-      const tableColumns = response.data || [];
-      
+      const tableColumns = response.data.data || [];
+
       // Get datasource type for type mapping
       const datasourceType = getDatasourceType(datasourceId);
-      
+
       const defaultColumns: DatasetColumn[] = tableColumns.map((col: ColumnInfo) => ({
         name: col.name,
         expr: `\`${col.name}\``,
         type: toStandardType(col.dataType || 'varchar', datasourceType),
         comment: col.comment || '',
-        role: ['int', 'bigint', 'float', 'decimal', 'numeric', 'double', 'real'].includes(col.dataType?.toLowerCase() ?? '') 
-          ? 'metric' 
+        role: ['int', 'bigint', 'float', 'decimal', 'numeric', 'double', 'real'].includes(
+          col.dataType?.toLowerCase() ?? ''
+        )
+          ? 'metric'
           : 'dimension',
       }));
-      
+
       setDatasetColumns(defaultColumns);
     } catch (error: any) {
       console.error('Failed to fetch table columns:', error);
@@ -419,10 +452,10 @@ const DatasetPage: React.FC = () => {
   // Handle table/SQL selection and fetch preview
   const handleTableOrSqlChange = async () => {
     if (!selectedDatasourceId) return;
-    
+
     const tableName = form.getFieldValue('table_name');
     const querySql = form.getFieldValue('query_sql');
-    
+
     if ((queryType === 'table' && !tableName) || (queryType === 'sql' && !querySql)) {
       setModalPreviewData(null);
       setDatasetColumns([]);
@@ -443,8 +476,8 @@ const DatasetPage: React.FC = () => {
         querySql || '',
         queryType
       );
-      setModalPreviewData(response.data || null);
-    } catch (error: any) {
+      setModalPreviewData(response.data.data || null);
+    } catch (_error: any) {
       setModalPreviewData(null);
     } finally {
       setModalPreviewLoading(false);
@@ -467,8 +500,8 @@ const DatasetPage: React.FC = () => {
         queryType,
         fieldName
       );
-      setFieldDistribution(response.data);
-    } catch (error: any) {
+      setFieldDistribution(response.data.data);
+    } catch (_error: any) {
       setFieldDistribution(null);
     } finally {
       setDistributionLoading(false);
@@ -545,9 +578,7 @@ const DatasetPage: React.FC = () => {
   };
 
   const handleColumnRoleChange = (name: string, role: 'dimension' | 'metric') => {
-    setDatasetColumns((prev) =>
-      prev.map((col) => (col.name === name ? { ...col, role } : col))
-    );
+    setDatasetColumns((prev) => prev.map((col) => (col.name === name ? { ...col, role } : col)));
   };
 
   const handleColumnTypeChange = (name: string, type: string) => {
@@ -582,7 +613,7 @@ const DatasetPage: React.FC = () => {
   };
 
   // Filter datasets by search text
-  const filteredDatasets = (datasets || []).filter(ds => 
+  const filteredDatasets = (Array.isArray(datasets) ? datasets : []).filter((ds) =>
     ds.name.toLowerCase().includes(searchText.toLowerCase())
   );
 
@@ -617,7 +648,9 @@ const DatasetPage: React.FC = () => {
       key: 'query_type',
       render: (type: string) => (
         <Tag color={type === 'table' ? 'green' : 'purple'}>
-          {type === 'table' ? intl.formatMessage({ id: 'dataset.queryType.table' }) : intl.formatMessage({ id: 'dataset.customSql' })}
+          {type === 'table'
+            ? intl.formatMessage({ id: 'dataset.queryType.table' })
+            : intl.formatMessage({ id: 'dataset.customSql' })}
         </Tag>
       ),
     },
@@ -627,7 +660,9 @@ const DatasetPage: React.FC = () => {
       key: 'source',
       render: (_: any, record: any) => (
         <Text code>
-          {record.query_type === 'table' ? record.table_name : record.query_sql?.substring(0, 50) + '...'}
+          {record.query_type === 'table'
+            ? record.table_name
+            : `${record.query_sql?.substring(0, 50)}...`}
         </Text>
       ),
     },
@@ -685,14 +720,19 @@ const DatasetPage: React.FC = () => {
   return (
     <div style={{ padding: '24px' }}>
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+          }}
+        >
           <div>
             <Title level={3} style={{ margin: 0 }}>
               {intl.formatMessage({ id: 'dataset.datasets' })}
             </Title>
-            <Text type="secondary">
-              {intl.formatMessage({ id: 'dataset.manageDatasets' })}
-            </Text>
+            <Text type="secondary">{intl.formatMessage({ id: 'dataset.manageDatasets' })}</Text>
           </div>
           <Space>
             <Button
@@ -773,7 +813,9 @@ const DatasetPage: React.FC = () => {
             <Form.Item
               name="name"
               label={intl.formatMessage({ id: 'dataset.name' })}
-              rules={[{ required: true, message: intl.formatMessage({ id: 'dataset.pleaseEnterName' }) }]}
+              rules={[
+                { required: true, message: intl.formatMessage({ id: 'dataset.pleaseEnterName' }) },
+              ]}
             >
               <Input placeholder={intl.formatMessage({ id: 'dataset.pleaseEnterName' })} />
             </Form.Item>
@@ -781,14 +823,19 @@ const DatasetPage: React.FC = () => {
             <Form.Item
               name="datasource_id"
               label={intl.formatMessage({ id: 'dataset.datasource' })}
-              rules={[{ required: true, message: intl.formatMessage({ id: 'dataset.pleaseSelectDatasource' }) }]}
+              rules={[
+                {
+                  required: true,
+                  message: intl.formatMessage({ id: 'dataset.pleaseSelectDatasource' }),
+                },
+              ]}
             >
               <Select
                 placeholder={intl.formatMessage({ id: 'dataset.pleaseSelectDatasource' })}
                 onChange={handleDatasourceChange}
                 loading={datasources.length === 0}
               >
-                {datasources.map((ds) => (
+                {(Array.isArray(datasources) ? datasources : []).map((ds) => (
                   <Select.Option key={ds.id} value={ds.id}>
                     {ds.name}
                   </Select.Option>
@@ -799,7 +846,12 @@ const DatasetPage: React.FC = () => {
             <Form.Item
               name="query_type"
               label={intl.formatMessage({ id: 'dataset.queryType' })}
-              rules={[{ required: true, message: intl.formatMessage({ id: 'dataset.pleaseSelectQueryType' }) }]}
+              rules={[
+                {
+                  required: true,
+                  message: intl.formatMessage({ id: 'dataset.pleaseSelectQueryType' }),
+                },
+              ]}
             >
               <Select
                 placeholder={intl.formatMessage({ id: 'dataset.pleaseSelectQueryType' })}
@@ -824,7 +876,12 @@ const DatasetPage: React.FC = () => {
               <Form.Item
                 name="table_name"
                 label={intl.formatMessage({ id: 'dataset.tableName' })}
-                rules={[{ required: queryType === 'table', message: intl.formatMessage({ id: 'dataset.pleaseSelectTable' }) }]}
+                rules={[
+                  {
+                    required: queryType === 'table',
+                    message: intl.formatMessage({ id: 'dataset.pleaseSelectTable' }),
+                  },
+                ]}
               >
                 <Select
                   placeholder={intl.formatMessage({ id: 'dataset.selectTable' })}
@@ -845,7 +902,12 @@ const DatasetPage: React.FC = () => {
               <Form.Item
                 name="query_sql"
                 label={intl.formatMessage({ id: 'dataset.sql' })}
-                rules={[{ required: queryType === 'sql', message: intl.formatMessage({ id: 'dataset.pleaseEnterSql' }) }]}
+                rules={[
+                  {
+                    required: queryType === 'sql',
+                    message: intl.formatMessage({ id: 'dataset.pleaseEnterSql' }),
+                  },
+                ]}
               >
                 <Input.TextArea
                   placeholder={intl.formatMessage({ id: 'dataset.enterSql' })}
@@ -855,9 +917,11 @@ const DatasetPage: React.FC = () => {
               </Form.Item>
             )}
 
-            {modalPreviewData && modalPreviewData.data && modalPreviewData.data.length > 0 && (
+            {modalPreviewData?.data && modalPreviewData.data.length > 0 && (
               <div style={{ marginBottom: 16 }}>
-                <Text strong style={{ display: 'block', marginBottom: 8 }}>{intl.formatMessage({ id: 'dataset.dataPreview' })}</Text>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                  {intl.formatMessage({ id: 'dataset.dataPreview' })}
+                </Text>
                 <Table
                   dataSource={modalPreviewData.data.slice(0, 10)}
                   rowKey={(_: any, index?: number) => String(index ?? Math.random())}
@@ -875,9 +939,16 @@ const DatasetPage: React.FC = () => {
               </div>
             )}
 
-            {modalPreviewData && modalPreviewData.columns && modalPreviewData.columns.length > 0 && (
+            {modalPreviewData?.columns && modalPreviewData.columns.length > 0 && (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 8,
+                  }}
+                >
                   <Text strong>{intl.formatMessage({ id: 'dataset.fieldDistribution' })}</Text>
                   <Select
                     placeholder={intl.formatMessage({ id: 'dataset.selectField' })}
@@ -894,20 +965,33 @@ const DatasetPage: React.FC = () => {
                     ))}
                   </Select>
                 </div>
-                {fieldDistribution && fieldDistribution.distribution && fieldDistribution.distribution.length > 0 && (
+                {fieldDistribution?.distribution && fieldDistribution.distribution.length > 0 && (
                   <Spin spinning={distributionLoading}>
+                    <div ref={chartRef} style={{ width: '100%', height: 250 }} />
                     <div
-                      ref={chartRef}
-                      style={{ width: '100%', height: 250 }}
-                    />
-                    <div style={{ marginTop: 8, display: 'flex', gap: 16, fontSize: 12, color: '#666' }}>
-                      <span>{intl.formatMessage({ id: 'dataset.totalCount' })}: {fieldDistribution.total_count}</span>
-                      <span>{intl.formatMessage({ id: 'dataset.uniqueCount' })}: {fieldDistribution.unique_count}</span>
+                      style={{
+                        marginTop: 8,
+                        display: 'flex',
+                        gap: 16,
+                        fontSize: 12,
+                        color: '#666',
+                      }}
+                    >
+                      <span>
+                        {intl.formatMessage({ id: 'dataset.totalCount' })}:{' '}
+                        {fieldDistribution.total_count}
+                      </span>
+                      <span>
+                        {intl.formatMessage({ id: 'dataset.uniqueCount' })}:{' '}
+                        {fieldDistribution.unique_count}
+                      </span>
                     </div>
                   </Spin>
                 )}
                 {selectedField && !fieldDistribution && !distributionLoading && (
-                  <Text type="secondary">{intl.formatMessage({ id: 'dataset.noDistributionData' })}</Text>
+                  <Text type="secondary">
+                    {intl.formatMessage({ id: 'dataset.noDistributionData' })}
+                  </Text>
                 )}
               </div>
             )}
@@ -938,12 +1022,25 @@ const DatasetPage: React.FC = () => {
             <div style={{ marginBottom: 16 }}>
               <Text strong>{intl.formatMessage({ id: 'dataset.datasetName' })}: </Text>
               <Text>{tempDatasetName}</Text>
-              <Button type="link" size="small" onClick={handlePrevStep} icon={<ArrowLeftOutlined />} style={{ marginLeft: 8 }}>
+              <Button
+                type="link"
+                size="small"
+                onClick={handlePrevStep}
+                icon={<ArrowLeftOutlined />}
+                style={{ marginLeft: 8 }}
+              >
                 {intl.formatMessage({ id: 'dataset.modify' })}
               </Button>
             </div>
 
-            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div
+              style={{
+                marginBottom: 12,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
               <Title level={5} style={{ margin: 0 }}>
                 {intl.formatMessage({ id: 'dataset.columns' })} ({datasetColumns.length})
               </Title>
@@ -962,7 +1059,9 @@ const DatasetPage: React.FC = () => {
               size="small"
               pagination={false}
               rowSelection={{
-                selectedRowKeys: datasetColumns.filter((c: any) => c.visible !== false).map((c: any) => c.name),
+                selectedRowKeys: datasetColumns
+                  .filter((c: any) => c.visible !== false)
+                  .map((c: any) => c.name),
                 onChange: (selectedRowKeys) => {
                   const newColumns = datasetColumns.map((col: any) => ({
                     ...col,
@@ -978,11 +1077,18 @@ const DatasetPage: React.FC = () => {
                   key: 'name',
                   render: (name: string, record: any) => (
                     <Space>
-                      {record.expr && record.expr !== `\`${record.name}\`` && <FunctionOutlined style={{ color: '#722ed1' }} />}
-                      <Text strong={!!record.expr} style={{ color: record.role === 'dimension' ? '#1890ff' : '#722ed1' }}>
+                      {record.expr && record.expr !== `\`${record.name}\`` && (
+                        <FunctionOutlined style={{ color: '#722ed1' }} />
+                      )}
+                      <Text
+                        strong={!!record.expr}
+                        style={{ color: record.role === 'dimension' ? '#1890ff' : '#722ed1' }}
+                      >
                         {name}
                       </Text>
-                      {record.expr && record.expr !== `\`${record.name}\`` && <Tag color="purple">{intl.formatMessage({ id: 'field.virtual' })}</Tag>}
+                      {record.expr && record.expr !== `\`${record.name}\`` && (
+                        <Tag color="purple">{intl.formatMessage({ id: 'field.virtual' })}</Tag>
+                      )}
                     </Space>
                   ),
                 },
@@ -998,12 +1104,24 @@ const DatasetPage: React.FC = () => {
                       style={{ width: 110 }}
                       onChange={(value) => handleColumnTypeChange(record.name, value)}
                     >
-                      <Select.Option value="string">{intl.formatMessage({ id: 'dataType.string' })}</Select.Option>
-                      <Select.Option value="int">{intl.formatMessage({ id: 'dataType.integer' })}</Select.Option>
-                      <Select.Option value="float">{intl.formatMessage({ id: 'dataType.float' })}</Select.Option>
-                      <Select.Option value="date">{intl.formatMessage({ id: 'dataType.date' })}</Select.Option>
-                      <Select.Option value="datetime">{intl.formatMessage({ id: 'dataType.datetime' })}</Select.Option>
-                      <Select.Option value="boolean">{intl.formatMessage({ id: 'dataType.boolean' })}</Select.Option>
+                      <Select.Option value="string">
+                        {intl.formatMessage({ id: 'dataType.string' })}
+                      </Select.Option>
+                      <Select.Option value="int">
+                        {intl.formatMessage({ id: 'dataType.integer' })}
+                      </Select.Option>
+                      <Select.Option value="float">
+                        {intl.formatMessage({ id: 'dataType.float' })}
+                      </Select.Option>
+                      <Select.Option value="date">
+                        {intl.formatMessage({ id: 'dataType.date' })}
+                      </Select.Option>
+                      <Select.Option value="datetime">
+                        {intl.formatMessage({ id: 'dataType.datetime' })}
+                      </Select.Option>
+                      <Select.Option value="boolean">
+                        {intl.formatMessage({ id: 'dataType.boolean' })}
+                      </Select.Option>
                     </Select>
                   ),
                 },
@@ -1032,7 +1150,14 @@ const DatasetPage: React.FC = () => {
                   dataIndex: 'expr',
                   key: 'expr',
                   width: 200,
-                  render: (expr: string) => expr ? <Text code style={{ fontSize: 12 }}>{expr}</Text> : '-',
+                  render: (expr: string) =>
+                    expr ? (
+                      <Text code style={{ fontSize: 12 }}>
+                        {expr}
+                      </Text>
+                    ) : (
+                      '-'
+                    ),
                 },
                 {
                   title: intl.formatMessage({ id: 'dataset.actions' }),
@@ -1051,18 +1176,15 @@ const DatasetPage: React.FC = () => {
                         <Popconfirm
                           title={intl.formatMessage({ id: 'virtualField.deleteConfirm' })}
                           onConfirm={() => {
-                            const updatedColumns = (datasetColumns || []).filter(col => col.name !== record.name);
+                            const updatedColumns = (datasetColumns || []).filter(
+                              (col) => col.name !== record.name
+                            );
                             setDatasetColumns(updatedColumns);
                           }}
                           okText={intl.formatMessage({ id: 'common.yes' })}
                           cancelText={intl.formatMessage({ id: 'common.no' })}
                         >
-                          <Button
-                            type="text"
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                          />
+                          <Button type="text" size="small" danger icon={<DeleteOutlined />} />
                         </Popconfirm>
                       </Space>
                     ) : null;
@@ -1085,10 +1207,7 @@ const DatasetPage: React.FC = () => {
                 >
                   {intl.formatMessage({ id: 'common.cancel' })}
                 </Button>
-                <Button
-                  onClick={handlePrevStep}
-                  icon={<ArrowLeftOutlined />}
-                >
+                <Button onClick={handlePrevStep} icon={<ArrowLeftOutlined />}>
                   {intl.formatMessage({ id: 'dataset.prevStep' })}
                 </Button>
                 <Button
@@ -1130,7 +1249,9 @@ const DatasetPage: React.FC = () => {
           <Form.Item
             name="name"
             label={intl.formatMessage({ id: 'dataset.name' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'dataset.pleaseEnterName' }) }]}
+            rules={[
+              { required: true, message: intl.formatMessage({ id: 'dataset.pleaseEnterName' }) },
+            ]}
           >
             <Input placeholder={intl.formatMessage({ id: 'dataset.pleaseEnterName' })} />
           </Form.Item>
@@ -1138,14 +1259,19 @@ const DatasetPage: React.FC = () => {
           <Form.Item
             name="datasource_id"
             label={intl.formatMessage({ id: 'dataset.datasource' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'dataset.pleaseSelectDatasource' }) }]}
+            rules={[
+              {
+                required: true,
+                message: intl.formatMessage({ id: 'dataset.pleaseSelectDatasource' }),
+              },
+            ]}
           >
             <Select
               placeholder={intl.formatMessage({ id: 'dataset.pleaseSelectDatasource' })}
               onChange={handleDatasourceChange}
               loading={datasources.length === 0}
             >
-              {datasources.map((ds) => (
+              {(Array.isArray(datasources) ? datasources : []).map((ds) => (
                 <Select.Option key={ds.id} value={ds.id}>
                   {ds.name}
                 </Select.Option>
@@ -1156,7 +1282,12 @@ const DatasetPage: React.FC = () => {
           <Form.Item
             name="query_type"
             label={intl.formatMessage({ id: 'dataset.queryType' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'dataset.pleaseSelectQueryType' }) }]}
+            rules={[
+              {
+                required: true,
+                message: intl.formatMessage({ id: 'dataset.pleaseSelectQueryType' }),
+              },
+            ]}
           >
             <Select
               placeholder={intl.formatMessage({ id: 'dataset.pleaseSelectQueryType' })}
@@ -1181,7 +1312,12 @@ const DatasetPage: React.FC = () => {
             <Form.Item
               name="table_name"
               label={intl.formatMessage({ id: 'dataset.tableName' })}
-              rules={[{ required: queryType === 'table', message: intl.formatMessage({ id: 'dataset.pleaseSelectTable' }) }]}
+              rules={[
+                {
+                  required: queryType === 'table',
+                  message: intl.formatMessage({ id: 'dataset.pleaseSelectTable' }),
+                },
+              ]}
             >
               <Select
                 placeholder={intl.formatMessage({ id: 'dataset.selectTable' })}
@@ -1199,7 +1335,12 @@ const DatasetPage: React.FC = () => {
             <Form.Item
               name="query_sql"
               label={intl.formatMessage({ id: 'dataset.sql' })}
-              rules={[{ required: queryType === 'sql', message: intl.formatMessage({ id: 'dataset.pleaseEnterSql' }) }]}
+              rules={[
+                {
+                  required: queryType === 'sql',
+                  message: intl.formatMessage({ id: 'dataset.pleaseEnterSql' }),
+                },
+              ]}
             >
               <Input.TextArea
                 placeholder={intl.formatMessage({ id: 'dataset.enterSql' })}
@@ -1252,14 +1393,20 @@ const DatasetPage: React.FC = () => {
           {editingDataset && (
             <>
               <Descriptions bordered column={2} style={{ marginBottom: 24 }}>
-                <Descriptions.Item label={intl.formatMessage({ id: 'dataset.id' })}>{editingDataset.id}</Descriptions.Item>
-                <Descriptions.Item label={intl.formatMessage({ id: 'dataset.name' })}>{editingDataset.name}</Descriptions.Item>
+                <Descriptions.Item label={intl.formatMessage({ id: 'dataset.id' })}>
+                  {editingDataset.id}
+                </Descriptions.Item>
+                <Descriptions.Item label={intl.formatMessage({ id: 'dataset.name' })}>
+                  {editingDataset.name}
+                </Descriptions.Item>
                 <Descriptions.Item label={intl.formatMessage({ id: 'dataset.datasource' })}>
                   {getDatasourceName(editingDataset.datasource_id)}
                 </Descriptions.Item>
                 <Descriptions.Item label={intl.formatMessage({ id: 'dataset.queryType' })}>
                   <Tag color={editingDataset.query_type === 'table' ? 'green' : 'purple'}>
-                    {editingDataset.query_type === 'table' ? intl.formatMessage({ id: 'dataset.queryType.table' }) : intl.formatMessage({ id: 'dataset.customSql' })}
+                    {editingDataset.query_type === 'table'
+                      ? intl.formatMessage({ id: 'dataset.queryType.table' })
+                      : intl.formatMessage({ id: 'dataset.customSql' })}
                   </Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label={intl.formatMessage({ id: 'dataset.source' })} span={2}>
@@ -1270,10 +1417,14 @@ const DatasetPage: React.FC = () => {
                   </Text>
                 </Descriptions.Item>
                 <Descriptions.Item label={intl.formatMessage({ id: 'dataset.createdAt' })}>
-                  {editingDataset.created_at ? new Date(editingDataset.created_at).toLocaleString() : '-'}
+                  {editingDataset.created_at
+                    ? new Date(editingDataset.created_at).toLocaleString()
+                    : '-'}
                 </Descriptions.Item>
                 <Descriptions.Item label={intl.formatMessage({ id: 'dataset.updatedAt' })}>
-                  {editingDataset.updated_at ? new Date(editingDataset.updated_at).toLocaleString() : '-'}
+                  {editingDataset.updated_at
+                    ? new Date(editingDataset.updated_at).toLocaleString()
+                    : '-'}
                 </Descriptions.Item>
               </Descriptions>
 
@@ -1329,17 +1480,26 @@ const DatasetPage: React.FC = () => {
                               fontSize: 13,
                             }}
                           >
-                            {isDimension ? intl.formatMessage({ id: 'field.dimensions' }) : intl.formatMessage({ id: 'field.metrics' })}
+                            {isDimension
+                              ? intl.formatMessage({ id: 'field.dimensions' })
+                              : intl.formatMessage({ id: 'field.metrics' })}
                           </div>
                         );
                       }
                       return (
                         <Space>
-                          {record.expr && record.expr !== `\`${record.name}\`` && <FunctionOutlined style={{ color: '#722ed1' }} />}
-                          <Text strong={!!record.expr} style={{ color: record.role === 'dimension' ? '#1890ff' : '#722ed1' }}>
+                          {record.expr && record.expr !== `\`${record.name}\`` && (
+                            <FunctionOutlined style={{ color: '#722ed1' }} />
+                          )}
+                          <Text
+                            strong={!!record.expr}
+                            style={{ color: record.role === 'dimension' ? '#1890ff' : '#722ed1' }}
+                          >
                             {name}
                           </Text>
-                          {record.expr && record.expr !== `\`${record.name}\`` && <Tag color="purple">{intl.formatMessage({ id: 'field.virtual' })}</Tag>}
+                          {record.expr && record.expr !== `\`${record.name}\`` && (
+                            <Tag color="purple">{intl.formatMessage({ id: 'field.virtual' })}</Tag>
+                          )}
                         </Space>
                       );
                     },
@@ -1358,12 +1518,24 @@ const DatasetPage: React.FC = () => {
                           style={{ width: 110 }}
                           onChange={(value) => handleColumnTypeChange(record.name, value)}
                         >
-                          <Select.Option value="string">{intl.formatMessage({ id: 'dataType.string' })}</Select.Option>
-                          <Select.Option value="int">{intl.formatMessage({ id: 'dataType.integer' })}</Select.Option>
-                          <Select.Option value="float">{intl.formatMessage({ id: 'dataType.float' })}</Select.Option>
-                          <Select.Option value="date">{intl.formatMessage({ id: 'dataType.date' })}</Select.Option>
-                          <Select.Option value="datetime">{intl.formatMessage({ id: 'dataType.datetime' })}</Select.Option>
-                          <Select.Option value="boolean">{intl.formatMessage({ id: 'dataType.boolean' })}</Select.Option>
+                          <Select.Option value="string">
+                            {intl.formatMessage({ id: 'dataType.string' })}
+                          </Select.Option>
+                          <Select.Option value="int">
+                            {intl.formatMessage({ id: 'dataType.integer' })}
+                          </Select.Option>
+                          <Select.Option value="float">
+                            {intl.formatMessage({ id: 'dataType.float' })}
+                          </Select.Option>
+                          <Select.Option value="date">
+                            {intl.formatMessage({ id: 'dataType.date' })}
+                          </Select.Option>
+                          <Select.Option value="datetime">
+                            {intl.formatMessage({ id: 'dataType.datetime' })}
+                          </Select.Option>
+                          <Select.Option value="boolean">
+                            {intl.formatMessage({ id: 'dataType.boolean' })}
+                          </Select.Option>
                         </Select>
                       );
                     },
@@ -1398,7 +1570,13 @@ const DatasetPage: React.FC = () => {
                     width: 200,
                     render: (expr: string, record: any) => {
                       if (record.isGroupHeader) return null;
-                      return expr ? <Text code style={{ fontSize: 12 }}>{expr}</Text> : '-';
+                      return expr ? (
+                        <Text code style={{ fontSize: 12 }}>
+                          {expr}
+                        </Text>
+                      ) : (
+                        '-'
+                      );
                     },
                   },
                   {
@@ -1422,12 +1600,7 @@ const DatasetPage: React.FC = () => {
                             okText={intl.formatMessage({ id: 'common.yes' })}
                             cancelText={intl.formatMessage({ id: 'common.no' })}
                           >
-                            <Button
-                              type="text"
-                              size="small"
-                              danger
-                              icon={<DeleteOutlined />}
-                            />
+                            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
                           </Popconfirm>
                         </Space>
                       ) : null;
@@ -1440,11 +1613,15 @@ const DatasetPage: React.FC = () => {
                 }}
               />
 
-              <Typography.Title level={5}>{intl.formatMessage({ id: 'dataset.preview' })}</Typography.Title>
-              {previewData && previewData.data && previewData.data.length > 0 ? (
+              <Typography.Title level={5}>
+                {intl.formatMessage({ id: 'dataset.preview' })}
+              </Typography.Title>
+              {previewData?.data && previewData.data.length > 0 ? (
                 <Table
                   dataSource={previewData.data.slice(0, 10)}
-                  rowKey={(record: any, index?: number) => record ? String(index ?? Math.random()) : String(Math.random())}
+                  rowKey={(record: any, index?: number) =>
+                    record ? String(index ?? Math.random()) : String(Math.random())
+                  }
                   size="small"
                   pagination={false}
                   columns={(previewData.columns || []).map((col: string) => ({
@@ -1464,7 +1641,11 @@ const DatasetPage: React.FC = () => {
       </Drawer>
 
       <Modal
-        title={editingVirtualField ? intl.formatMessage({ id: 'virtualField.edit' }) : intl.formatMessage({ id: 'virtualField.add' })}
+        title={
+          editingVirtualField
+            ? intl.formatMessage({ id: 'virtualField.edit' })
+            : intl.formatMessage({ id: 'virtualField.add' })
+        }
         open={virtualFieldModalVisible}
         onCancel={() => {
           setVirtualFieldModalVisible(false);
@@ -1474,14 +1655,13 @@ const DatasetPage: React.FC = () => {
         footer={null}
         width={500}
       >
-        <Form
-          form={virtualFieldForm}
-          layout="vertical"
-        >
+        <Form form={virtualFieldForm} layout="vertical">
           <Form.Item
             name="name"
             label={intl.formatMessage({ id: 'field.fieldName' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'field.pleaseEnterFieldName' }) }]}
+            rules={[
+              { required: true, message: intl.formatMessage({ id: 'field.pleaseEnterFieldName' }) },
+            ]}
           >
             <Input placeholder="e.g., total_price" disabled={!!editingVirtualField} />
           </Form.Item>
@@ -1489,7 +1669,9 @@ const DatasetPage: React.FC = () => {
           <Form.Item
             name="expr"
             label={intl.formatMessage({ id: 'field.expr' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'field.pleaseEnterExpr' }) }]}
+            rules={[
+              { required: true, message: intl.formatMessage({ id: 'field.pleaseEnterExpr' }) },
+            ]}
             tooltip="Use `source_field` for source fields, [field] for dataset fields. Example: `amount` * 0.3, [revenue] * 0.8"
           >
             <Input.TextArea
@@ -1501,10 +1683,12 @@ const DatasetPage: React.FC = () => {
           <Form.Item
             name="type"
             label={intl.formatMessage({ id: 'field.resultType' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'field.pleaseSelectDataType' }) }]}
+            rules={[
+              { required: true, message: intl.formatMessage({ id: 'field.pleaseSelectDataType' }) },
+            ]}
           >
             <Select placeholder={intl.formatMessage({ id: 'field.pleaseSelectDataType' })}>
-              {dataTypes.map(dt => (
+              {dataTypes.map((dt) => (
                 <Select.Option key={dt.value} value={dt.value}>
                   {dt.label}
                 </Select.Option>
@@ -1515,18 +1699,21 @@ const DatasetPage: React.FC = () => {
           <Form.Item
             name="role"
             label={intl.formatMessage({ id: 'field.role' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'field.pleaseSelectRole' }) }]}
+            rules={[
+              { required: true, message: intl.formatMessage({ id: 'field.pleaseSelectRole' }) },
+            ]}
           >
             <Select placeholder={intl.formatMessage({ id: 'field.pleaseSelectRole' })}>
-              <Select.Option value="dimension">{intl.formatMessage({ id: 'field.dimension' })}</Select.Option>
-              <Select.Option value="metric">{intl.formatMessage({ id: 'field.metric' })}</Select.Option>
+              <Select.Option value="dimension">
+                {intl.formatMessage({ id: 'field.dimension' })}
+              </Select.Option>
+              <Select.Option value="metric">
+                {intl.formatMessage({ id: 'field.metric' })}
+              </Select.Option>
             </Select>
           </Form.Item>
 
-          <Form.Item
-            name="comment"
-            label={intl.formatMessage({ id: 'field.description' })}
-          >
+          <Form.Item name="comment" label={intl.formatMessage({ id: 'field.description' })}>
             <Input.TextArea
               placeholder={intl.formatMessage({ id: 'virtualField.descriptionPlaceholder' })}
               rows={2}
@@ -1544,12 +1731,10 @@ const DatasetPage: React.FC = () => {
               >
                 {intl.formatMessage({ id: 'common.cancel' })}
               </Button>
-              <Button
-                type="primary"
-                loading={savingColumns}
-                onClick={handleSaveVirtualField}
-              >
-                {editingVirtualField ? intl.formatMessage({ id: 'common.update' }) : intl.formatMessage({ id: 'common.add' })}
+              <Button type="primary" loading={savingColumns} onClick={handleSaveVirtualField}>
+                {editingVirtualField
+                  ? intl.formatMessage({ id: 'common.update' })
+                  : intl.formatMessage({ id: 'common.add' })}
               </Button>
             </Space>
           </Form.Item>

@@ -1,24 +1,15 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useIntl } from 'react-intl';
 import {
-  Table,
-  Button,
-  Card,
-  Typography,
-  Tag,
-  Space,
-  Popconfirm,
-  message,
-} from 'antd';
-import {
-  ReloadOutlined,
-  DeleteOutlined,
   BarChartOutlined,
+  DeleteOutlined,
+  EditOutlined,
   LineChartOutlined,
   PieChartOutlined,
-  EditOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
+import { Button, Card, message, Popconfirm, Space, Table, Tag, Typography } from 'antd';
+import { useEffect } from 'react';
+import { useIntl } from 'react-intl';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 
 const { Title, Text } = Typography;
@@ -82,7 +73,7 @@ const ChartsPage: React.FC = () => {
         yAxisFields: parsedConfig.yAxisFields || [],
         title: parsedConfig.title || record.name,
       };
-    } catch (e) {
+    } catch (_e) {
       // Use default values if config parse fails
     }
 
@@ -99,7 +90,6 @@ const ChartsPage: React.FC = () => {
         return <LineChartOutlined />;
       case 'pie':
         return <PieChartOutlined />;
-      case 'bar':
       default:
         return <BarChartOutlined />;
     }
@@ -112,7 +102,6 @@ const ChartsPage: React.FC = () => {
         return 'green';
       case 'pie':
         return 'orange';
-      case 'bar':
       default:
         return 'blue';
     }
@@ -139,11 +128,7 @@ const ChartsPage: React.FC = () => {
       render: (text: string, record: any) => (
         <Space>
           {getChartTypeIcon(record.chart_type)}
-          <Button
-            type="link"
-            style={{ padding: 0 }}
-            onClick={() => handleEdit(record)}
-          >
+          <Button type="link" style={{ padding: 0 }} onClick={() => handleEdit(record)}>
             <Text strong>{text}</Text>
           </Button>
         </Space>
@@ -163,9 +148,7 @@ const ChartsPage: React.FC = () => {
       title: intl.formatMessage({ id: 'chart.dataset' }),
       dataIndex: 'dataset_id',
       key: 'dataset_id',
-      render: (datasetId: number) => (
-        <Tag color="purple">{getDatasetName(datasetId)}</Tag>
-      ),
+      render: (datasetId: number) => <Tag color="purple">{getDatasetName(datasetId)}</Tag>,
     },
     {
       title: intl.formatMessage({ id: 'chart.createdAt' }),
@@ -199,12 +182,7 @@ const ChartsPage: React.FC = () => {
             okText={intl.formatMessage({ id: 'common.yes' })}
             cancelText={intl.formatMessage({ id: 'common.no' })}
           >
-            <Button
-              type="link"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-            >
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
               {intl.formatMessage({ id: 'common.delete' })}
             </Button>
           </Popconfirm>
@@ -216,21 +194,22 @@ const ChartsPage: React.FC = () => {
   return (
     <div style={{ padding: '24px' }}>
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+          }}
+        >
           <div>
             <Title level={3} style={{ margin: 0 }}>
               {intl.formatMessage({ id: 'chart.charts' })}
             </Title>
-            <Text type="secondary">
-              {intl.formatMessage({ id: 'chart.manageCharts' })}
-            </Text>
+            <Text type="secondary">{intl.formatMessage({ id: 'chart.manageCharts' })}</Text>
           </div>
           <Space>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => fetchCharts()}
-              loading={chartsLoading}
-            >
+            <Button icon={<ReloadOutlined />} onClick={() => fetchCharts()} loading={chartsLoading}>
               {intl.formatMessage({ id: 'common.refresh' })}
             </Button>
             <Button
@@ -248,7 +227,7 @@ const ChartsPage: React.FC = () => {
 
         <Table
           columns={columns}
-          dataSource={charts}
+          dataSource={Array.isArray(charts) ? charts : []}
           rowKey="id"
           loading={chartsLoading}
           pagination={{

@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
-import { Table, Spin, Empty, Typography } from 'antd';
 import type { TableProps } from 'antd';
+import { Empty, Spin, Table, Typography } from 'antd';
+import { useMemo } from 'react';
 import type { QueryConfig } from '../../store';
 
 const { Text } = Typography;
@@ -18,16 +18,21 @@ interface TableChartProps {
   onPageChange?: (page: number, pageSize: number) => void;
 }
 
-const TableChart: React.FC<TableChartProps> = ({ 
-  data, 
-  loading, 
+const TableChart: React.FC<TableChartProps> = ({
+  data,
+  loading,
   queryConfig,
   columns: propColumns,
   pagination,
-  onPageChange 
+  onPageChange,
 }) => {
   const columns: TableProps<any>['columns'] = useMemo(() => {
-    const keys = propColumns && propColumns.length > 0 ? propColumns : (data && data.length > 0 ? Object.keys(data[0]) : []);
+    const keys =
+      propColumns && propColumns.length > 0
+        ? propColumns
+        : data && data.length > 0
+          ? Object.keys(data[0])
+          : [];
 
     return keys.map((key) => ({
       title: key,
@@ -42,10 +47,11 @@ const TableChart: React.FC<TableChartProps> = ({
     if (onPageChange && tablePagination) {
       onPageChange(tablePagination.current || 1, tablePagination.pageSize || 10);
     }
-    
+
     if (queryConfig && sorter && !Array.isArray(sorter)) {
       const sortField = sorter.field as string | undefined;
-      const sortOrder = sorter.order === 'ascend' ? 'asc' : sorter.order === 'descend' ? 'desc' : undefined;
+      const sortOrder =
+        sorter.order === 'ascend' ? 'asc' : sorter.order === 'descend' ? 'desc' : undefined;
 
       if (sortField && sortOrder) {
         queryConfig.sort = { field: sortField, order: sortOrder };

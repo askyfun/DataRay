@@ -1,6 +1,6 @@
-import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
-import { message } from 'antd';
 import * as Sentry from '@sentry/react';
+import { message } from 'antd';
+import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 export const API_CODE = {
   SUCCESS: 20000,
@@ -65,16 +65,16 @@ function createApiClient(baseURL: string): AxiosInstance {
 
   client.interceptors.response.use(
     (response: AxiosResponse<ApiResponse>) => {
-      const { code, msg, data } = response.data;
-      
+      const { code, msg } = response.data;
+
       if (code !== API_CODE.SUCCESS) {
         const displayMsg = CODE_MSG_MAP[code] || msg;
         message.error(displayMsg);
-        
+
         if (code === API_CODE.UNAUTHORIZED) {
-          // 可以在这里处理登出逻辑
+          // Handle logout logic here
         }
-        
+
         Sentry.captureMessage(`API Error: ${code} - ${msg}`, {
           extra: {
             url: response.config.url,
@@ -82,43 +82,34 @@ function createApiClient(baseURL: string): AxiosInstance {
             code,
           },
         });
-        
+
         return Promise.reject(new Error(msg));
       }
-      
+
       return response;
     },
     (error) => {
       const status = error.response?.status;
-      const responseData = error.response?.data;
-      
-      let errorMsg = error.message;
-      let errorCode = API_CODE.INTERNAL_ERROR;
-      
-      if (responseData) {
-        if (typeof responseData === 'string') {
-          errorMsg = responseData;
-        } else if (responseData.msg) {
-          errorMsg = responseData.msg;
-        }
-        
-        if (responseData.code) {
-          errorCode = responseData.code;
-        }
+      const errorMsg =
+        error.response?.data?.msg ||
+        error.response?.data?.message ||
+        error.message ||
+        'An error occurred';
+      console.error('API Error:', errorMsg);
+
+      if (status && status >= 400) {
+        Sentry.captureMessage(
+          `API Error: ${error.response?.config?.method?.toUpperCase()} ${error.response?.config?.url} returned ${status}: ${errorMsg}`,
+          {
+            extra: {
+              url: error.response?.config?.url,
+              method: error.response?.config?.method,
+              status,
+            },
+          }
+        );
       }
-      
-      const displayMsg = CODE_MSG_MAP[errorCode] || errorMsg;
-      message.error(displayMsg);
-      
-      Sentry.captureMessage(`API Error: ${errorCode} - ${errorMsg}`, {
-        extra: {
-          url: error.response?.config?.url,
-          method: error.response?.config?.method,
-          status,
-          code: errorCode,
-        },
-      });
-      
+
       return Promise.reject(error);
     }
   );
@@ -126,24 +117,28 @@ function createApiClient(baseURL: string): AxiosInstance {
   return client;
 }
 
-export const apiClient = createApiClient(
-  `http://${window.location.hostname || 'localhost'}:8080`
-);
+export const apiClient = createApiClient(`http://${window.location.hostname || 'localhost'}:8080}`);
 
 export function get<T>(url: string, config?: InternalAxiosRequestConfig): Promise<ApiResponse<T>> {
-  return apiClient.get<ApiResponse<T>>(url, config).then(res => res.data);
+  return apiClient.get<ApiResponse<T>>(url, config).then((res) => res.data);
 }
 
-export function post<T>(url: string, data?: unknown, config?: InternalAxiosRequestConfig): Promise<ApiResponse<T>> {
-  return apiClient.post<ApiResponse<T>>(url, data, config).then(res => res.data);
+export function post<T>(
+  url: string,
+  data?: unknown,
+  config?: InternalAxiosRequestConfig
+): Promise<ApiResponse<T>> {
+  return apiClient.post<ApiResponse<T>>(url, data, config).then((res) => res.data);
 }
 
-export function put<T>(url: string, data?: unknown, config?: InternalAxiosRequestConfig): Promise<ApiResponse<T>> {
-  return apiClient.put<ApiResponse<T>>(url, data, config).then(res => res.data);
+export function put<T>(
+  url: string,
+  data?: unknown,
+  config?: InternalAxiosRequestConfig
+): Promise<ApiResponse<T>> {
+  return apiClient.put<ApiResponse<T>>(url, data, config).then((res) => res.data);
 }
 
 export function del<T>(url: string, config?: InternalAxiosRequestConfig): Promise<ApiResponse<T>> {
-  return apiClient.delete<ApiResponse<T>>(url, config).then(res => res.data);
+  return apiClient.delete<ApiResponse<T>>(url, config).then((res) => res.data);
 }
-
-export default apiClient;

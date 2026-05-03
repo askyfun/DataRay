@@ -1,48 +1,51 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import ReactECharts from 'echarts-for-react';
-import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import {
-  Layout,
-  Card,
-  Typography,
-  Select,
-  Button,
-  Space,
-  Empty,
-  Spin,
-  Divider,
-  message,
-  Switch,
-  Input,
-  Modal,
-  Drawer,
-} from 'antd';
-import {
-  BarChartOutlined,
-  LineChartOutlined,
-  PieChartOutlined,
-  TableOutlined,
-  AreaChartOutlined,
-  DotChartOutlined,
   AppstoreOutlined,
-  SaveOutlined,
-  ReloadOutlined,
-  PlayCircleOutlined,
+  AreaChartOutlined,
+  BarChartOutlined,
   CodeOutlined,
-  MenuOutlined,
-  LeftOutlined,
-  RightOutlined,
+  DotChartOutlined,
   FieldBinaryOutlined,
   FunctionOutlined,
-  FilterOutlined,
+  LineChartOutlined,
+  PieChartOutlined,
+  PlayCircleOutlined,
+  ReloadOutlined,
+  SaveOutlined,
+  TableOutlined,
 } from '@ant-design/icons';
-import { useStore, ChartField, ChartConfig } from '../store';
+import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  Button,
+  Card,
+  Divider,
+  Drawer,
+  Empty,
+  Input,
+  Layout,
+  Modal,
+  message,
+  Select,
+  Space,
+  Spin,
+  Switch,
+  Typography,
+} from 'antd';
+import ReactECharts from 'echarts-for-react';
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ChartQueryAggregation, ChartQueryRequest } from '../api';
-import FilterBuilder from '../components/ChartBuilder/FilterBuilder';
-import TableChart from '../components/ChartBuilder/TableChart';
 import DraggableField from '../components/ChartBuilder/DraggableField';
+import FilterBuilder from '../components/ChartBuilder/FilterBuilder';
 import QueryConfigRow from '../components/ChartBuilder/QueryConfigRow';
+import TableChart from '../components/ChartBuilder/TableChart';
+import { ChartConfig, ChartField, useStore } from '../store';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -56,9 +59,9 @@ interface ChartCanvasProps {
 const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
   const getChartOption = useCallback(() => {
     const { queryConfig } = useStore.getState();
-    const dimensionFields = queryConfig.dimensionGroups.flatMap(g => g.fields);
-    const metricFields = queryConfig.metricGroups.flatMap(g => g.fields);
-    
+    const dimensionFields = queryConfig.dimensionGroups.flatMap((g) => g.fields);
+    const metricFields = queryConfig.metricGroups.flatMap((g) => g.fields);
+
     if (dimensionFields.length === 0 || metricFields.length === 0 || data.length === 0) {
       return null;
     }
@@ -240,12 +243,7 @@ const FieldListPanel: React.FC<FieldListPanelProps> = ({ fields, loading }) => {
   }
 
   if (fields.length === 0) {
-    return (
-      <Empty
-        description="请先选择数据集"
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-      />
-    );
+    return <Empty description="请先选择数据集" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
   }
 
   return (
@@ -288,10 +286,7 @@ const chartTypeOptions = [
   { type: 'pivot', icon: <AppstoreOutlined />, label: '透视表' },
 ] as const;
 
-const ConfigPanel: React.FC<ConfigPanelProps> = ({
-  config,
-  onConfigChange,
-}) => {
+const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onConfigChange }) => {
   return (
     <div>
       <Card title="可视化类型" size="small" style={{ marginBottom: 12 }}>
@@ -359,7 +354,6 @@ const ChartBuilder: React.FC = () => {
     chartDataLoading,
     setChartBuilderConfig,
     fetchDatasetFields,
-    fetchQueryData,
     resetChartBuilder,
     addChart,
     updateChart,
@@ -402,50 +396,53 @@ const ChartBuilder: React.FC = () => {
     })
   );
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (!over) return;
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
 
-    const fieldData = active.data.current;
-    const overData = over.data.current;
+      if (!over) return;
 
-    if (!fieldData || fieldData.type !== 'field') return;
+      const fieldData = active.data.current;
+      const overData = over.data.current;
 
-    const field = fieldData.field as ChartField;
-    const dropZoneType = overData?.type as 'dimension' | 'metric' | 'filter';
+      if (!fieldData || fieldData.type !== 'field') return;
 
-    if (dropZoneType === 'dimension') {
-      if (field.type === 'dimension') {
-        addDimensionField(field);
-      } else {
-        message.warning('请将指标拖入指标区域');
+      const field = fieldData.field as ChartField;
+      const dropZoneType = overData?.type as 'dimension' | 'metric' | 'filter';
+
+      if (dropZoneType === 'dimension') {
+        if (field.type === 'dimension') {
+          addDimensionField(field);
+        } else {
+          message.warning('请将指标拖入指标区域');
+        }
+      } else if (dropZoneType === 'metric') {
+        if (field.type === 'metric') {
+          addMetricField(field);
+        } else {
+          message.warning('请将维度拖入维度区域');
+        }
+      } else if (dropZoneType === 'filter') {
+        addFilter({
+          id: `filter-${Date.now()}`,
+          field: field.id,
+          operator: 'eq',
+          value: '',
+          logic: 'and',
+        });
       }
-    } else if (dropZoneType === 'metric') {
-      if (field.type === 'metric') {
-        addMetricField(field);
-      } else {
-        message.warning('请将维度拖入维度区域');
-      }
-    } else if (dropZoneType === 'filter') {
-      addFilter({
-        id: `filter-${Date.now()}`,
-        field: field.id,
-        operator: 'eq',
-        value: '',
-        logic: 'and',
-      });
-    }
-  }, [addDimensionField, addMetricField, addFilter]);
+    },
+    [addDimensionField, addMetricField, addFilter]
+  );
 
   const getDimensionFields = useCallback(() => {
-    const dimensionIds = queryConfig.dimensionGroups.flatMap(g => g.fields);
-    return chartBuilderFields.filter(f => dimensionIds.includes(f.id));
+    const dimensionIds = queryConfig.dimensionGroups.flatMap((g) => g.fields);
+    return chartBuilderFields.filter((f) => dimensionIds.includes(f.id));
   }, [queryConfig.dimensionGroups, chartBuilderFields]);
 
   const getMetricFields = useCallback(() => {
-    const metricIds = queryConfig.metricGroups.flatMap(g => g.fields);
-    return chartBuilderFields.filter(f => metricIds.includes(f.id));
+    const metricIds = queryConfig.metricGroups.flatMap((g) => g.fields);
+    return chartBuilderFields.filter((f) => metricIds.includes(f.id));
   }, [queryConfig.metricGroups, chartBuilderFields]);
 
   const buildChartQueryRequest = useCallback((): ChartQueryRequest | null => {
@@ -458,15 +455,15 @@ const ChartBuilder: React.FC = () => {
       return null;
     }
 
-    const dims = dimensionFields.map(f => f.name);
-    const metrics = metricFields.map(f => ({
+    const dims = dimensionFields.map((f) => f.name);
+    const metrics = metricFields.map((f) => ({
       field: f.name,
       agg: (metricAggregations[f.id] || 'sum') as ChartQueryAggregation,
       alias: metricAliases[f.id] || f.name,
     }));
 
-    const filters = queryConfig.filters.map(f => {
-      const field = chartBuilderFields.find(field => field.id === f.field);
+    const filters = queryConfig.filters.map((f) => {
+      const field = chartBuilderFields.find((field) => field.id === f.field);
       return {
         field: field?.name || f.field,
         op: f.operator as any,
@@ -482,12 +479,25 @@ const ChartBuilder: React.FC = () => {
       dims,
       metrics,
       filters,
-      pagination: chartBuilderConfig.chartType === 'table' ? {
-        page: tablePagination.page,
-        page_size: tablePagination.pageSize,
-      } : undefined,
+      pagination:
+        chartBuilderConfig.chartType === 'table'
+          ? {
+              page: tablePagination.page,
+              page_size: tablePagination.pageSize,
+            }
+          : undefined,
     };
-  }, [selectedDatasetId, getDimensionFields, getMetricFields, metricAggregations, metricAliases, queryConfig.filters, chartBuilderConfig.chartType, tablePagination, chartBuilderFields]);
+  }, [
+    selectedDatasetId,
+    getDimensionFields,
+    getMetricFields,
+    metricAggregations,
+    metricAliases,
+    queryConfig.filters,
+    chartBuilderConfig.chartType,
+    tablePagination,
+    chartBuilderFields,
+  ]);
 
   const handleExecuteQuery = useCallback(() => {
     const request = buildChartQueryRequest();
@@ -496,14 +506,17 @@ const ChartBuilder: React.FC = () => {
     }
   }, [buildChartQueryRequest, executeChartQuery]);
 
-  const handlePageChange = useCallback((page: number, pageSize: number) => {
-    setTablePagination({ ...tablePagination, page, pageSize });
-    const request = buildChartQueryRequest();
-    if (request) {
-      request.pagination = { page, page_size: pageSize };
-      executeChartQuery(request);
-    }
-  }, [buildChartQueryRequest, executeChartQuery, setTablePagination, tablePagination]);
+  const handlePageChange = useCallback(
+    (page: number, pageSize: number) => {
+      setTablePagination({ ...tablePagination, page, pageSize });
+      const request = buildChartQueryRequest();
+      if (request) {
+        request.pagination = { page, page_size: pageSize };
+        executeChartQuery(request);
+      }
+    },
+    [buildChartQueryRequest, executeChartQuery, setTablePagination, tablePagination]
+  );
 
   useEffect(() => {
     fetchDatasets();
@@ -517,7 +530,7 @@ const ChartBuilder: React.FC = () => {
       const chartId = parseInt(editId, 10);
       const dsId = parseInt(datasetIdParam, 10);
 
-      if (!isNaN(chartId) && !isNaN(dsId)) {
+      if (!Number.isNaN(chartId) && !Number.isNaN(dsId)) {
         setSelectedDatasetId(dsId);
         setEditingChartId(chartId);
       }
@@ -533,29 +546,44 @@ const ChartBuilder: React.FC = () => {
   }, [selectedDatasetId, fetchDatasetFields, resetChartBuilder]);
 
   useEffect(() => {
-    if (selectedDatasetId && autoQuery) {
-      const request = buildChartQueryRequest();
-      if (request) {
-        executeChartQuery(request);
-      }
-    }
-  }, [chartBuilderConfig.chartType, selectedDatasetId, autoQuery, queryConfig, queryConfig.dimensionGroups, queryConfig.metricGroups, queryConfig.filters]);
+    if (!selectedDatasetId) return;
 
-  useEffect(() => {
-    if (selectedDatasetId && queryConfig) {
-      const hasDimensions = queryConfig.dimensionGroups.some(g => g.fields.length > 0);
-      const hasMetrics = queryConfig.metricGroups.some(g => g.fields.length > 0);
-      
-      if (hasDimensions || hasMetrics) {
-        if (!autoQuery) {
-          const request = buildChartQueryRequest();
-          if (request) {
-            executeChartQuery(request);
-          }
-        }
-      }
-    }
-  }, [selectedDatasetId, queryConfig, autoQuery]);
+    const state = useStore.getState();
+    const dimFields = state.chartBuilderFields.filter((f) =>
+      state.queryConfig.dimensionGroups.some((g) => g.fields.includes(f.id))
+    );
+    const metFields = state.chartBuilderFields.filter((f) =>
+      state.queryConfig.metricGroups.some((g) => g.fields.includes(f.id))
+    );
+
+    if (dimFields.length === 0 && metFields.length === 0) return;
+
+    const request: ChartQueryRequest = {
+      dataset_id: selectedDatasetId,
+      chart_type: state.chartBuilderConfig.chartType,
+      dims: dimFields.map((f) => f.name),
+      metrics: metFields.map((f) => ({
+        field: f.name,
+        agg: (state.metricAggregations[f.id] || 'sum') as ChartQueryAggregation,
+        alias: state.metricAliases[f.id] || f.name,
+      })),
+      filters: state.queryConfig.filters.map((f) => {
+        const field = state.chartBuilderFields.find((field) => field.id === f.field);
+        return {
+          field: field?.name || f.field,
+          op: f.operator as any,
+          value: f.value,
+          value_end: (f as any).valueEnd,
+          logic: f.logic,
+        };
+      }),
+      pagination:
+        state.chartBuilderConfig.chartType === 'table'
+          ? { page: state.tablePagination.page, page_size: state.tablePagination.pageSize }
+          : undefined,
+    };
+    executeChartQuery(request);
+  }, [selectedDatasetId, executeChartQuery]);
 
   useEffect(() => {
     const loadChartConfig = async () => {
@@ -563,7 +591,7 @@ const ChartBuilder: React.FC = () => {
         try {
           const { chartsApi } = await import('../api');
           const response = await chartsApi.getById(editingChartId);
-          const chart = response.data;
+          const chart = response.data.data;
 
           try {
             const config = JSON.parse(chart.config);
@@ -571,13 +599,20 @@ const ChartBuilder: React.FC = () => {
               chartType: config.chartType || 'table',
               title: config.title || chart.name,
             });
-            
+
             if (config.queryConfig) {
               setQueryConfig(config.queryConfig);
             }
-          } catch (e) {
+          } catch (_e) {
             setChartBuilderConfig({
-              chartType: chart.chart_type as 'table' | 'line' | 'bar' | 'pie' | 'area' | 'scatter' | 'pivot',
+              chartType: chart.chart_type as
+                | 'table'
+                | 'line'
+                | 'bar'
+                | 'pie'
+                | 'area'
+                | 'scatter'
+                | 'pivot',
               title: chart.name,
             });
           }
@@ -640,9 +675,9 @@ const ChartBuilder: React.FC = () => {
   const renderPreview = () => {
     if (chartBuilderConfig.chartType === 'table' || chartBuilderConfig.chartType === 'pivot') {
       return (
-        <TableChart 
-          data={chartData} 
-          loading={chartDataLoading} 
+        <TableChart
+          data={chartData}
+          loading={chartDataLoading}
           queryConfig={queryConfig}
           columns={tableColumns}
           pagination={chartBuilderConfig.chartType === 'table' ? tablePagination : undefined}
@@ -669,7 +704,9 @@ const ChartBuilder: React.FC = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Text strong style={{ fontSize: 14 }}>数据集:</Text>
+            <Text strong style={{ fontSize: 14 }}>
+              数据集:
+            </Text>
             <Select
               style={{ width: 160 }}
               placeholder="选择数据集"
@@ -736,7 +773,9 @@ const ChartBuilder: React.FC = () => {
         }}
       >
         <Space>
-          <Text strong style={{ fontSize: 16 }}>数据集:</Text>
+          <Text strong style={{ fontSize: 16 }}>
+            数据集:
+          </Text>
           <Select
             style={{ width: 240 }}
             placeholder="选择数据集"
@@ -765,10 +804,7 @@ const ChartBuilder: React.FC = () => {
             </Button>
           )}
           {chartData.length > 0 && (
-            <Button
-              icon={<CodeOutlined />}
-              onClick={() => setSqlModalVisible(true)}
-            >
+            <Button icon={<CodeOutlined />} onClick={() => setSqlModalVisible(true)}>
               查看 SQL
             </Button>
           )}
@@ -791,7 +827,15 @@ const ChartBuilder: React.FC = () => {
   const renderContent = () => {
     if (isMobile) {
       return (
-        <Content style={{ padding: '12px', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Content
+          style={{
+            padding: '12px',
+            background: '#fafafa',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
           <Card title="查询配置" size="small" style={{ flex: '0 0 auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <QueryConfigRow
@@ -831,9 +875,7 @@ const ChartBuilder: React.FC = () => {
           </Card>
 
           <Card title="预览" size="small" style={{ flex: 1, minHeight: 300 }}>
-            <div style={{ height: 'calc(100vh - 400px)', minHeight: 250 }}>
-              {renderPreview()}
-            </div>
+            <div style={{ height: 'calc(100vh - 400px)', minHeight: 250 }}>{renderPreview()}</div>
           </Card>
         </Content>
       );
@@ -850,7 +892,15 @@ const ChartBuilder: React.FC = () => {
           </Card>
         </Sider>
 
-        <Content style={{ padding: '12px', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Content
+          style={{
+            padding: '12px',
+            background: '#fafafa',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
           <Card title="查询配置" size="small" style={{ flex: '0 0 auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <QueryConfigRow
@@ -890,9 +940,7 @@ const ChartBuilder: React.FC = () => {
           </Card>
 
           <Card title="预览" size="small" style={{ flex: 1, minHeight: 400 }}>
-            <div style={{ height: 'calc(100vh - 480px)', minHeight: 300 }}>
-              {renderPreview()}
-            </div>
+            <div style={{ height: 'calc(100vh - 480px)', minHeight: 300 }}>{renderPreview()}</div>
           </Card>
         </Content>
 
@@ -900,21 +948,14 @@ const ChartBuilder: React.FC = () => {
           width={260}
           style={{ background: '#fff', padding: '12px', borderLeft: '1px solid #f0f0f0' }}
         >
-          <ConfigPanel
-            config={chartBuilderConfig}
-            onConfigChange={setChartBuilderConfig}
-          />
+          <ConfigPanel config={chartBuilderConfig} onConfigChange={setChartBuilderConfig} />
         </Sider>
       </Layout>
     );
   };
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-    >
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <Layout style={{ minHeight: 'calc(100vh - 120px)' }}>
         {renderHeader()}
 
@@ -939,10 +980,7 @@ const ChartBuilder: React.FC = () => {
           open={rightDrawerOpen}
           width={300}
         >
-          <ConfigPanel
-            config={chartBuilderConfig}
-            onConfigChange={setChartBuilderConfig}
-          />
+          <ConfigPanel config={chartBuilderConfig} onConfigChange={setChartBuilderConfig} />
         </Drawer>
       </Layout>
       <Modal
@@ -955,27 +993,33 @@ const ChartBuilder: React.FC = () => {
         {chartQueryResponse && (
           <div>
             <Text strong>数据查询:</Text>
-            <pre style={{ 
-              background: '#f5f5f5', 
-              padding: 12, 
-              borderRadius: 4, 
-              overflow: 'auto',
-              maxHeight: 300,
-              fontSize: 12
-            }}>
+            <pre
+              style={{
+                background: '#f5f5f5',
+                padding: 12,
+                borderRadius: 4,
+                overflow: 'auto',
+                maxHeight: 300,
+                fontSize: 12,
+              }}
+            >
               {chartQueryResponse.select_sql || '无'}
             </pre>
             {chartQueryResponse.count_sql && (
               <>
-                <Text strong style={{ marginTop: 16, display: 'block' }}>计数查询:</Text>
-                <pre style={{ 
-                  background: '#f5f5f5', 
-                  padding: 12, 
-                  borderRadius: 4, 
-                  overflow: 'auto',
-                  maxHeight: 200,
-                  fontSize: 12
-                }}>
+                <Text strong style={{ marginTop: 16, display: 'block' }}>
+                  计数查询:
+                </Text>
+                <pre
+                  style={{
+                    background: '#f5f5f5',
+                    padding: 12,
+                    borderRadius: 4,
+                    overflow: 'auto',
+                    maxHeight: 200,
+                    fontSize: 12,
+                  }}
+                >
                   {chartQueryResponse.count_sql}
                 </pre>
               </>

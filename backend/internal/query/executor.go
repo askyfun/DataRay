@@ -58,7 +58,7 @@ func (e *Executor) Execute(ctx context.Context, req *ChartQueryRequest) (Executo
 		req.Pagination,
 	)
 
-	sql, countSQL := BuildQueryString(dialect, ast)
+	sql, countSQL := BuildQueryStringWithBun(dialect, ast)
 	slog.Debug("generated SQL", "select", sql, "count", countSQL)
 
 	processor := GetProcessor(req.ChartType)

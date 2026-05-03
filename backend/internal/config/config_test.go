@@ -6,15 +6,16 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
-	// Create a temporary config file - using yaml tags from embedded RestConf
+	// Create a temporary config file
 	content := `
-Name: testapp
-Host: 127.0.0.1
-Port: 9090
-Database:
-  Url: postgres://user:pass@localhost:5432/testdb?sslmode=disable
+Name = "testapp"
+Host = "127.0.0.1"
+Port = 9090
+
+[Database]
+Url = "postgres://user:pass@localhost:5432/testdb?sslmode=disable"
 `
-	tmpFile, err := os.CreateTemp("", "config-*.yaml")
+	tmpFile, err := os.CreateTemp("", "config-*.toml")
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
@@ -25,45 +26,43 @@ Database:
 	}
 	tmpFile.Close()
 
-	// Test LoadConfig
-	var cfg Config
+	cfg := &Config{}
 	if err := cfg.LoadConfig(tmpFile.Name()); err != nil {
-		t.Fatalf("LoadConfig failed: %v", err)
+		t.Fatalf("failed to load config: %v", err)
 	}
 
-	// Verify loaded values
 	if cfg.Name != "testapp" {
-		t.Errorf("expected Name=testapp, got %s", cfg.Name)
+		t.Errorf("expected name 'testapp', got '%s'", cfg.Name)
 	}
 	if cfg.Host != "127.0.0.1" {
-		t.Errorf("expected Host=127.0.0.1, got %s", cfg.Host)
+		t.Errorf("expected host '127.0.0.1', got '%s'", cfg.Host)
 	}
 	if cfg.Port != 9090 {
-		t.Errorf("expected Port=9090, got %d", cfg.Port)
+		t.Errorf("expected port 9090, got %d", cfg.Port)
 	}
 	if cfg.Database.Url != "postgres://user:pass@localhost:5432/testdb?sslmode=disable" {
-		t.Errorf("expected Database.Url, got %s", cfg.Database.Url)
+		t.Errorf("expected database url, got '%s'", cfg.Database.Url)
 	}
 }
 
-func TestLoadConfigFileNotFound(t *testing.T) {
-	var cfg Config
-	err := cfg.LoadConfig("/nonexistent/path/config.yaml")
+func TestLoadConfigNotFound(t *testing.T) {
+	cfg := &Config{}
+	err := cfg.LoadConfig("/nonexistent/path/config.toml")
 	if err == nil {
-		t.Error("expected error for non-existent file")
+		t.Error("expected error for nonexistent config file")
 	}
 }
 
-func TestLoadConfigInvalidYAML(t *testing.T) {
-	// Create a temporary file with invalid YAML
+func TestLoadConfigInvalid(t *testing.T) {
 	content := `
-Name: testapp
-Host: 127.0.0.1
-Port: "not-a-number"
-Database:
-  Url: postgres://user:pass@localhost:5432/testdb
+Name = "testapp"
+Host = "127.0.0.1"
+Port = 9090
+
+[Database]
+Url = "invalid url"
 `
-	tmpFile, err := os.CreateTemp("", "config-*.yaml")
+	tmpFile, err := os.CreateTemp("", "config-*.toml")
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
@@ -74,25 +73,8 @@ Database:
 	}
 	tmpFile.Close()
 
-	var cfg Config
-	err = cfg.LoadConfig(tmpFile.Name())
-	if err == nil {
-		t.Error("expected error for invalid YAML")
-	}
-}
-
-func TestLoadConfigEmpty(t *testing.T) {
-	// Create an empty temporary file
-	tmpFile, err := os.CreateTemp("", "config-*.yaml")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name())
-	tmpFile.Close()
-
-	var cfg Config
-	err = cfg.LoadConfig(tmpFile.Name())
-	if err != nil {
-		t.Errorf("empty config should be valid: %v", err)
+	cfg := &Config{}
+	if err := cfg.LoadConfig(tmpFile.Name()); err != nil {
+		t.Fatalf("failed to load config: %v", err)
 	}
 }

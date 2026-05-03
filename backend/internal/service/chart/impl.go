@@ -1,0 +1,321 @@
+package chart
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"dataray/internal/datasource"
+	"dataray/internal/domain/entity"
+	"dataray/internal/model"
+	"dataray/internal/query"
+
+	"github.com/uptrace/bun"
+)
+
+// Service defines the interface for chart operations
+type Service interface {
+	// CRUD operations
+	List(ctx context.Context, limit, offset int) ([]entity.Chart, error)
+	GetByID(ctx context.Context, id int) (*entity.Chart, error)
+	Create(ctx context.Context, chart *entity.Chart) (*entity.Chart, error)
+	Update(ctx context.Context, chart *entity.Chart) (*entity.Chart, error)
+	Delete(ctx context.Context, id int) error
+
+	// Data operations
+	GetData(ctx context.Context, id int) (entity.ChartDataResult, error)
+	Query(ctx context.Context, req *entity.ChartQueryRequest) (entity.ChartDataResult, error)
+}
+
+// chartService implements the Service interface
+type chartService struct {
+	db *bun.DB
+}
+
+// NewService creates a new chart service
+func NewService(db *bun.DB) Service {
+	return &chartService{db: db}
+}
+
+// List returns all charts with pagination
+func (s *chartService) List(ctx context.Context, limit, offset int) ([]entity.Chart, error) {
+	var charts []model.Chart
+	q := s.db.NewSelect().Model(&charts)
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+	if offset > 0 {
+		q = q.Offset(offset)
+	}
+	if err := q.Scan(ctx); err != nil {
+		return nil, fmt.Errorf("failed to list charts: %w", err)
+	}
+	return toChartEntityList(charts), nil
+}
+
+// GetByID returns a chart by ID
+func (s *chartService) GetByID(ctx context.Context, id int) (*entity.Chart, error) {
+	chart := &model.Chart{ID: id}
+	if err := s.db.NewSelect().Model(chart).WherePK().Scan(ctx); err != nil {
+		return nil, fmt.Errorf("chart not found: %w", err)
+	}
+	return toChartEntity(chart), nil
+}
+
+// Create creates a new chart
+func (s *chartService) Create(ctx context.Context, chart *entity.Chart) (*entity.Chart, error) {
+	m := toChartModel(chart)
+	if _, err := s.db.NewInsert().Model(m).Exec(ctx); err != nil {
+		return nil, fmt.Errorf("failed to create chart: %w", err)
+	}
+	return toChartEntity(m), nil
+}
+
+// Update updates an existing chart
+func (s *chartService) Update(ctx context.Context, chart *entity.Chart) (*entity.Chart, error) {
+	m := toChartModel(chart)
+	if _, err := s.db.NewUpdate().Model(m).WherePK().Exec(ctx); err != nil {
+		return nil, fmt.Errorf("failed to update chart: %w", err)
+	}
+	updated := &model.Chart{ID: chart.ID}
+	if err := s.db.NewSelect().Model(updated).WherePK().Scan(ctx); err != nil {
+		return nil, fmt.Errorf("failed to get updated chart: %w", err)
+	}
+	return toChartEntity(updated), nil
+}
+
+// Delete deletes a chart by ID
+func (s *chartService) Delete(ctx context.Context, id int) error {
+	if _, err := s.db.NewDelete().Model(&model.Chart{}).Where("id = ?", id).Exec(ctx); err != nil {
+		return fmt.Errorf("failed to delete chart: %w", err)
+	}
+	return nil
+}
+
+// GetData returns data for a chart
+func (s *chartService) GetData(ctx context.Context, id int) (entity.ChartDataResult, error) {
+	chart, err := s.getChartModel(ctx, id)
+	if err != nil {
+		return entity.ChartDataResult{}, err
+	}
+
+	dataset, err := s.getDatasetModel(ctx, chart.DatasetID)
+	if err != nil {
+		return entity.ChartDataResult{}, err
+	}
+
+	dsModel, err := s.getDatasourceModel(ctx, dataset.DatasourceID)
+	if err != nil {
+		return entity.ChartDataResult{}, err
+	}
+
+	conn, err := s.connect(ctx, dsModel)
+	if err != nil {
+		return entity.ChartDataResult{}, err
+	}
+	defer conn.Close()
+
+	// Build query based on dataset type
+	baseQuery, err := getBaseQuery(dataset)
+	if err != nil {
+		return entity.ChartDataResult{}, err
+	}
+
+	query := fmt.Sprintf("SELECT * FROM %s LIMIT 100", baseQuery)
+	result, err := conn.Execute(ctx, query)
+	if err != nil {
+		return entity.ChartDataResult{}, fmt.Errorf("query failed: %w", err)
+	}
+
+	return entity.ChartDataResult{Data: result.Rows}, nil
+}
+
+// Query executes a chart query
+func (s *chartService) Query(ctx context.Context, req *entity.ChartQueryRequest) (entity.ChartDataResult, error) {
+	dataset, err := s.getDatasetModel(ctx, req.DatasetID)
+	if err != nil {
+		return entity.ChartDataResult{}, err
+	}
+
+	dsModel, err := s.getDatasourceModel(ctx, dataset.DatasourceID)
+	if err != nil {
+		return entity.ChartDataResult{}, err
+	}
+
+	conn, err := s.connect(ctx, dsModel)
+	if err != nil {
+		return entity.ChartDataResult{}, err
+	}
+	defer conn.Close()
+
+	executor := query.NewExecutor(conn, dataset, dsModel)
+
+	queryReq := &query.ChartQueryRequest{
+		DatasetID: req.DatasetID,
+		ChartType: query.ChartType(req.ChartType),
+		Dims:      req.Dims,
+		Metrics:   convertMetrics(req.Metrics),
+		Filters:   convertFilters(req.Filters),
+		Pagination: convertPagination(req.Pagination),
+		Sort:      convertSort(req.Sort),
+	}
+
+	result, err := executor.Execute(ctx, queryReq)
+	if err != nil {
+		return entity.ChartDataResult{}, fmt.Errorf("query execution failed: %w", err)
+	}
+
+	return entity.ChartDataResult{Data: result.Data}, nil
+}
+
+// Helper functions
+
+func (s *chartService) getChartModel(ctx context.Context, id int) (*model.Chart, error) {
+	chart := &model.Chart{ID: id}
+	if err := s.db.NewSelect().Model(chart).WherePK().Scan(ctx); err != nil {
+		return nil, fmt.Errorf("chart not found: %w", err)
+	}
+	return chart, nil
+}
+
+func (s *chartService) getDatasetModel(ctx context.Context, id int) (*model.Dataset, error) {
+	ds := &model.Dataset{ID: id}
+	if err := s.db.NewSelect().Model(ds).WherePK().Scan(ctx); err != nil {
+		return nil, fmt.Errorf("dataset not found: %w", err)
+	}
+	return ds, nil
+}
+
+func (s *chartService) getDatasourceModel(ctx context.Context, id int) (*model.Datasource, error) {
+	ds := &model.Datasource{ID: id}
+	if err := s.db.NewSelect().Model(ds).WherePK().Scan(ctx); err != nil {
+		return nil, fmt.Errorf("datasource not found: %w", err)
+	}
+	return ds, nil
+}
+
+func (s *chartService) connect(ctx context.Context, ds *model.Datasource) (datasource.Connection, error) {
+	driver, err := datasource.NewDriver(datasource.DriverType(ds.Type))
+	if err != nil {
+		return nil, fmt.Errorf("unsupported driver type: %s", ds.Type)
+	}
+
+	config := datasource.ConnectionConfig{
+		Host:         ds.Host,
+		Port:         ds.Port,
+		DatabaseName: ds.DatabaseName,
+		Username:     ds.Username,
+		Password:     ds.Password,
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	conn, err := driver.Connect(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+	return conn, nil
+}
+
+func getBaseQuery(ds *model.Dataset) (string, error) {
+	if ds.QueryType == "sql" && ds.QuerySQL.Valid {
+		return fmt.Sprintf("(%s) as _subq", ds.QuerySQL.String), nil
+	}
+	if ds.TableName.Valid {
+		return ds.TableName.String, nil
+	}
+	return "", fmt.Errorf("dataset has no valid query_sql or table_name")
+}
+
+// Conversion functions
+
+func toChartEntity(m *model.Chart) *entity.Chart {
+	e := &entity.Chart{
+		ID:        m.ID,
+		Name:      m.Name,
+		DatasetID: m.DatasetID,
+		ChartType: m.ChartType,
+		Config:    m.Config,
+	}
+	if m.CreatedAt.Valid {
+		e.CreatedAt = m.CreatedAt.Time.Format(time.RFC3339)
+	}
+	if m.UpdatedAt.Valid {
+		e.UpdatedAt = m.UpdatedAt.Time.Format(time.RFC3339)
+	}
+	return e
+}
+
+func toChartEntityList(models []model.Chart) []entity.Chart {
+	result := make([]entity.Chart, len(models))
+	for i, m := range models {
+		e := toChartEntity(&m)
+		result[i] = *e
+	}
+	return result
+}
+
+func toChartModel(e *entity.Chart) *model.Chart {
+	m := &model.Chart{
+		ID:        e.ID,
+		Name:      e.Name,
+		DatasetID: e.DatasetID,
+		ChartType: e.ChartType,
+		Config:    e.Config,
+	}
+	if e.Config == "" {
+		m.Config = "{}"
+	}
+	return m
+}
+
+// convertMetrics converts entity metrics to query metrics
+func convertMetrics(metrics []entity.MetricConfig) []query.MetricConfig {
+	result := make([]query.MetricConfig, len(metrics))
+	for i, m := range metrics {
+		result[i] = query.MetricConfig{
+			Field: m.Field,
+			Agg:   query.AggregationType(m.Agg),
+			Alias: m.Alias,
+		}
+	}
+	return result
+}
+
+// convertFilters converts entity filters to query filters
+func convertFilters(filters []entity.Filter) []query.FilterConfig {
+	result := make([]query.FilterConfig, len(filters))
+	for i, f := range filters {
+		result[i] = query.FilterConfig{
+			Field:    f.Field,
+			Op:       query.FilterOperator(f.Operator),
+			Value:    f.Value,
+			ValueEnd: f.ValueEnd,
+			Logic:    f.Logic,
+		}
+	}
+	return result
+}
+
+// convertPagination converts entity pagination to query pagination
+func convertPagination(p *entity.Pagination) *query.Pagination {
+	if p == nil {
+		return nil
+	}
+	return &query.Pagination{
+		Page:     p.Page,
+		PageSize: p.PageSize,
+	}
+}
+
+// convertSort converts entity sort to query sort
+func convertSort(s *entity.SortConfig) *query.SortConfig {
+	if s == nil {
+		return nil
+	}
+	return &query.SortConfig{
+		Field: s.Field,
+		Order: s.Order,
+	}
+}

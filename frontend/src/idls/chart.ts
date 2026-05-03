@@ -36,7 +36,18 @@ export interface ChartQueryMetric {
   alias?: string;
 }
 
-export type ChartQueryFilterOp = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'like' | 'in' | 'between' | 'isNull' | 'isNotNull';
+export type ChartQueryFilterOp =
+  | 'eq'
+  | 'neq'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'like'
+  | 'in'
+  | 'between'
+  | 'isNull'
+  | 'isNotNull';
 
 export interface ChartQueryFilter {
   field: string;
@@ -105,7 +116,27 @@ export interface GeneratedSQL {
   select: string;
   count: string;
 }
+export type ChartDataResponse =
+  | TableResponse
+  | PieResponse
+  | AxisResponse
+  | ScatterResponse
+  | unknown[];
 
+export interface ChartQueryResponse {
+  data: ChartDataResponse;
+  generated_sql?: GeneratedSQL;
+}
+
+export interface ChartQueryResponse {
+  data: ChartDataResponse;
+  generated_sql?: GeneratedSQL;
+}
+
+export interface ChartQueryResponseData {
+  data: ChartDataResponse;
+  generated_sql?: GeneratedSQL;
+}
 export interface ChartQueryResponseData {
   data: ChartDataResponse;
   generated_sql?: GeneratedSQL;
