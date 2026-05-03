@@ -586,6 +586,47 @@ const ChartBuilder: React.FC = () => {
   }, [selectedDatasetId, executeChartQuery]);
 
   useEffect(() => {
+    if (!autoQuery) return;
+    if (!selectedDatasetId) return;
+
+    const state = useStore.getState();
+    const dimFields = state.chartBuilderFields.filter((f) =>
+      state.queryConfig.dimensionGroups.some((g) => g.fields.includes(f.id))
+    );
+    const metFields = state.chartBuilderFields.filter((f) =>
+      state.queryConfig.metricGroups.some((g) => g.fields.includes(f.id))
+    );
+
+    if (dimFields.length === 0 && metFields.length === 0) return;
+
+    const request: ChartQueryRequest = {
+      dataset_id: selectedDatasetId,
+      chart_type: chartBuilderConfig.chartType,
+      dims: dimFields.map((f) => f.name),
+      metrics: metFields.map((f) => ({
+        field: f.name,
+        agg: (state.metricAggregations[f.id] || 'sum') as ChartQueryAggregation,
+        alias: state.metricAliases[f.id] || f.name,
+      })),
+      filters: state.queryConfig.filters.map((f) => {
+        const field = state.chartBuilderFields.find((field) => field.id === f.field);
+        return {
+          field: field?.name || f.field,
+          op: f.operator as any,
+          value: f.value,
+          value_end: (f as any).valueEnd,
+          logic: f.logic,
+        };
+      }),
+      pagination:
+        chartBuilderConfig.chartType === 'table'
+          ? { page: state.tablePagination.page, page_size: state.tablePagination.pageSize }
+          : undefined,
+    };
+    executeChartQuery(request);
+  }, [autoQuery, chartBuilderConfig.chartType, selectedDatasetId, executeChartQuery]);
+
+  useEffect(() => {
     const loadChartConfig = async () => {
       if (editingChartId && selectedDatasetId) {
         try {
