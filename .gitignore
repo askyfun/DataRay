@@ -23,6 +23,7 @@ node_modules/
 .opencode/
 
 # IDE and tools
+.kilo/
 .minimax
 console-errors.txt
 

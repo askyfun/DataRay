@@ -495,7 +495,8 @@ const ChartBuilder: React.FC = () => {
     metricAliases,
     queryConfig.filters,
     chartBuilderConfig.chartType,
-    tablePagination,
+    tablePagination.page,
+    tablePagination.pageSize,
     chartBuilderFields,
   ]);
 
@@ -589,12 +590,11 @@ const ChartBuilder: React.FC = () => {
     if (!autoQuery) return;
     if (!selectedDatasetId) return;
 
-    const state = useStore.getState();
-    const dimFields = state.chartBuilderFields.filter((f) =>
-      state.queryConfig.dimensionGroups.some((g) => g.fields.includes(f.id))
+    const dimFields = chartBuilderFields.filter((f) =>
+      queryConfig.dimensionGroups.some((g) => g.fields.includes(f.id))
     );
-    const metFields = state.chartBuilderFields.filter((f) =>
-      state.queryConfig.metricGroups.some((g) => g.fields.includes(f.id))
+    const metFields = chartBuilderFields.filter((f) =>
+      queryConfig.metricGroups.some((g) => g.fields.includes(f.id))
     );
 
     if (dimFields.length === 0 && metFields.length === 0) return;
@@ -605,11 +605,11 @@ const ChartBuilder: React.FC = () => {
       dims: dimFields.map((f) => f.name),
       metrics: metFields.map((f) => ({
         field: f.name,
-        agg: (state.metricAggregations[f.id] || 'sum') as ChartQueryAggregation,
-        alias: state.metricAliases[f.id] || f.name,
+        agg: (metricAggregations[f.id] || 'sum') as ChartQueryAggregation,
+        alias: metricAliases[f.id] || f.name,
       })),
-      filters: state.queryConfig.filters.map((f) => {
-        const field = state.chartBuilderFields.find((field) => field.id === f.field);
+      filters: queryConfig.filters.map((f) => {
+        const field = chartBuilderFields.find((field) => field.id === f.field);
         return {
           field: field?.name || f.field,
           op: f.operator as any,
@@ -620,11 +620,22 @@ const ChartBuilder: React.FC = () => {
       }),
       pagination:
         chartBuilderConfig.chartType === 'table'
-          ? { page: state.tablePagination.page, page_size: state.tablePagination.pageSize }
+          ? { page: tablePagination.page, page_size: tablePagination.pageSize }
           : undefined,
     };
     executeChartQuery(request);
-  }, [autoQuery, chartBuilderConfig.chartType, selectedDatasetId, executeChartQuery]);
+  }, [
+    autoQuery,
+    chartBuilderConfig.chartType,
+    selectedDatasetId,
+    executeChartQuery,
+    queryConfig,
+    metricAggregations,
+    metricAliases,
+    chartBuilderFields,
+    tablePagination.page,
+    tablePagination.pageSize,
+  ]);
 
   useEffect(() => {
     const loadChartConfig = async () => {
