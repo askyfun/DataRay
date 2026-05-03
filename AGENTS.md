@@ -1,22 +1,139 @@
 # DataRay 开发规范
 
-**生成时间**: 2026-02-26  
 **项目**: DataRay - 拖拽式 BI 可视化分析平台
 
-## 项目概览
+## 项目概述
 
-Monorepo 结构，包含前端 (React/TypeScript) 和后端 (Go)。核心功能：数据源管理、数据集管理、拖拽式图表构建、分享功能。
+DataRay 是一个拖拽式 BI 可视化分析平台（MVP）。Monorepo 结构，包含前端（React/TypeScript）和后端（Go）。核心功能：数据源管理、数据集管理、拖拽式图表构建、分享功能。
 
-## 关键约束 (CRITICAL)
+## 架构
 
-- **字段命名**: 前后端 JSON 通信使用 snake_case (如 `table_name`, not `tableName`)
-- **禁止 any**: TypeScript 使用 `unknown` 代替
-- **单元测试**: 后端新增功能或修复 bug 后必须补充对应的单元测试；大型重构后必须重跑单元测试确保功能无损
-- **错误处理**: Go handler 禁止空 catch 块
+### 技术栈
 
-## Sisyphus 工作流
+- **前端**: React 18 + TypeScript + Ant Design 5.x + ECharts 5.x + Zustand 4.x + @dnd-kit + Vite 6 + Biome（lint/格式化） + Vitest（测试）
+- **后端**: Go 1.26 + Gin + bun ORM + PostgreSQL + Sentry
+- **部署**: Docker + docker-compose
 
-### 意图识别与路由
+### 后端分层架构
+
+后端采用 handler → service → domain 分层模式：
+
+| 层级 | 目录 | 职责 |
+|------|------|------|
+| Handler | `backend/internal/handler/` | Gin HTTP 处理器，请求绑定，响应格式化 |
+| Service | `backend/internal/service/` | 业务逻辑（按领域：chart, dataset, datasource, share） |
+| Domain | `backend/internal/domain/` | 领域实体和业务规则 |
+| Model | `backend/internal/model/` | 数据库模型（bun ORM） |
+| Router | `backend/internal/router/` | 泛型路由注册 `RegisterRoute[In, Out]` |
+| Datasource | `backend/internal/datasource/` | 数据源驱动抽象（Driver 接口） |
+
+路由通过 `backend/internal/router/router.go` 中的泛型函数注册：`RegisterGetRoute`、`RegisterPostRoute`、`RegisterPutRoute`、`RegisterDeleteRoute`。路由器自动绑定 query 参数和 JSON body，并通过 `response.Success/Error/BadRequest` 统一包装响应。
+
+`datasource/` 包实现了 `Driver` 接口用于多数据库后端——新增驱动只需实现该接口。
+
+### 前端结构
+
+```
+frontend/src/
+├── api/           # API 客户端（axios）
+├── store/         # Zustand 状态管理
+├── pages/         # 页面组件
+├── components/    # 可复用组件
+├── idls/          # API 类型定义
+├── lib/           # 工具库（API 客户端在 lib/api/client.ts）
+├── i18n/          # 国际化
+└── styles/        # 全局样式
+```
+
+路径别名：`@/*` 映射到 `./src/*`。
+
+## 常用命令
+
+```bash
+# 前端
+cd frontend && npm install
+npm run dev            # 开发服务器，端口 3000
+npm run build          # tsc + vite 构建
+npm run format         # biome 格式化
+npm run lint           # biome lint 检查
+npm run check          # biome 完整检查（lint + 格式化）
+npm run test           # vitest 运行测试
+npm run build:check    # biome check + vitest（提交前验证）
+
+# 后端
+cd backend && go mod download
+go run ./cmd/main.go -f etc/config.toml   # 开发服务器，端口 8080
+go test ./...                              # 运行所有测试
+go test -v ./path/to/pkg -run TestName     # 运行单个测试
+go test -race ./...                        # 带竞态检测运行测试
+
+# Makefile（项目根目录）
+make dev               # 前后端同时启动，带热重载（air）
+make dev-frontend      # 仅前端
+make dev-backend       # 仅后端（使用 air 热重载）
+make build             # 前后端构建
+make docker-up         # docker-compose 启动所有服务
+make docker-down       # 停止服务
+make clean             # 清理 dist、node_modules、backend/bin
+```
+
+## 行为准则
+
+### 先思考再编码
+
+- 不确定时先探索，不要猜测。有歧义必须问用户。
+- 如果存在多种理解方式，列出它们——不要默默选一种。
+- 如果有更简单的方案，说出来。觉得不合理时应主动 push back。
+- 遇到不清楚的地方停下来，说清楚哪里不明白，再提问。
+
+### 极简优先
+
+- 只写解决问题的最少代码，不做投机性设计。
+- 不添加未要求的功能、抽象、灵活性或可配置性。
+- 不为不可能发生的场景添加错误处理。
+- 如果 50 行能解决的事写了 200 行，重写它。
+
+### 精准修改
+
+- 编辑现有代码时，只动必须动的部分，不顺手"改进"周边代码、注释或格式。
+- 匹配现有代码风格，即使你会用不同的方式写。
+- 你的改动导致的未使用导入/变量/函数，自行清理；不要删除改动之前就存在的死代码（除非被要求）。
+- 检验标准：每一行改动都应能直接追溯到用户的需求。
+
+### 目标驱动执行
+
+- 将任务转化为可验证的目标，循环执行直到验证通过。
+- 多步任务先给出简要计划：
+  ```
+  1. [步骤] → 验证: [检查方式]
+  2. [步骤] → 验证: [检查方式]
+  ```
+- 强成功标准让独立工作成为可能；弱标准（"让它跑起来"）会导致反复确认。
+
+## 关键约束
+
+- **JSON 字段命名**: 前后端 API 通信使用 snake_case（如 `table_name`、`query_sql`、`created_at`）。TypeScript 接口必须与后端字段名完全一致。
+- **TypeScript**: 使用 `unknown` 代替 `any`，禁止使用 `@ts-ignore` 或 `as any`。
+- **Go 错误处理**: 禁止空错误块，必须记录日志并返回错误响应。
+- **测试**: 后端新增功能或修复 bug 后必须补充单元测试，提交前运行 `go test -race ./...`。
+- **代码可测试性**: 设计代码必须具备可测试性，禁止提交无法测试的代码。
+- **文档同步**: 大型业务逻辑调整或架构调整必须同步更新 `docs/*.md`、`README.md`、`AGENTS.md` 等文档。
+- **Pre-commit 钩子**: Husky 在前端运行 `lint-staged`，对暂存的 `.ts/.tsx` 文件执行 `biome check`。
+
+## 零容忍
+
+以下行为严格禁止：
+- 部分实现（"简化版本"）
+- 未经授权的范围变更
+- 删除失败测试
+- 类型压制（`as any`、`@ts-ignore`）
+- 空 catch 块
+- 顺手重构与需求无关的代码
+- 添加未被要求的功能或抽象
+
+## Agent 工作流
+
+### 意图识别
 
 | 表面形式 | 真实意图 | 路由方式 |
 |----------|----------|----------|
@@ -36,76 +153,28 @@ Monorepo 结构，包含前端 (React/TypeScript) 和后端 (Go)。核心功能�
 | `plan` | 任务规划 | 2+ 步任务、范围不清 |
 | `momus` | 计划评审 | 工作计划质量审查 |
 
-### Category + Skills 委托
+### PLAN 调用条件
 
-| Category | 用途 | 典型场景 |
-|----------|------|----------|
-| `visual-engineering` | 前端 UI/UX | React 组件、样式、动画 |
-| `ultrabrain` | 复杂逻辑 | 深度算法、复杂业务逻辑 |
-| `deep` | 深度问题解决 | 需要深入理解的问题 |
-| `artistry` | 创造性方法 | 非传统方案 |
-| `quick` | 简单修改 | 拼写错误、小修小补 |
+- 任务有 2+ 步
+- 范围不清晰
+- 需要架构决策
 
-**Skills (项目级优先)**:
-- `frontend-philosophy` - UI 哲学
-- `code-review` - 代码审查
-- `code-philosophy` - 数据流哲学
-- `plan-protocol` - 计划管理
-- `plan-review` - 计划评审
-- `golang-pro` - Go 开发
-- `web-design-guidelines` - Web 界面指南
+### TODO 管理
 
-### 执行规则
-
-**TODO 管理**:
 1. 非平凡任务前创建 TODO
 2. 每步标记 `in_progress`
 3. 完成后立即标记 `completed`
 4. 范围变更时更新 TODO
 
-**并行执行**: 独立任务并行运行，explore/librarian 使用 `run_in_background=true`
+### 并行执行
 
-**验证保证**:
-- 构建: 退出码 0
-- 测试: 全部通过
-- 手动验证: 功能正常
+独立任务并行运行，explore/librarian 使用 `run_in_background=true`。
 
-### 必用协议
+## 配置
 
-**100% 确定要求**:
-- 不确定时先探索，不要猜测
-- 有歧义必须问用户
-- 不理解代码不要盲目修改
-
-**PLAN AGENT 调用条件**:
-- 任务有 2+ 步
-- 范围不清晰
-- 需要架构决策
-
-### 零容忍失败
-
-**禁止**:
-- 部分实现 ("简化版本")
-- 未经授权的范围变更
-- 删除失败测试
-- 类型压制 (`as any`, `@ts-ignore`)
-- 空 catch 块
-
-## 关键约束
-
-**代码可测试性**:
-- 设计代码必须具备可测试性
-- 开发完代码必须增加单元测试
-- 确保代码可以测试通过
-- 禁止提交无法测试的代码
-
-**文档同步更新**:
-- 大型业务逻辑调整必须更新相关 .md 文档
-- 架构调整必须更新相关 .md 文档
-- 文档范围包括: docs/*.md, README.md, AGENTS.md 等
-- 保持代码与文档状态一致
-
----
+- 后端配置: `backend/etc/config.toml`（TOML 格式）
+- 前端 API 基础 URL: `frontend/src/lib/api/client.ts`（默认 `http://localhost:8080`）
+- Docker compose: `docker-compose.yml` — PostgreSQL（端口 5432）、后端（8080）、前端（3000）
 
 ## 开发资源
 
@@ -114,11 +183,11 @@ Monorepo 结构，包含前端 (React/TypeScript) 和后端 (Go)。核心功能�
 | [docs/setup.md](docs/setup.md) | 环境搭建、运行命令 |
 | [docs/architecture.md](docs/architecture.md) | 目录结构、技术栈 |
 | [docs/coding-style.md](docs/coding-style.md) | 代码风格指南 |
-|| [docs/api.md](docs/api.md) | API 接口文档 (统一规范) |
+| [docs/api.md](docs/api.md) | API 接口文档（统一规范） |
 | [docs/todo.md](docs/todo.md) | 开发任务清单 |
 
 ## 已知限制
 
-- 前端无 ESLint/Prettier 配置
+- 前端无 ESLint/Prettier 配置（使用 Biome）
 - 后端无 golangci-lint 配置
 - 缺少端到端测试
