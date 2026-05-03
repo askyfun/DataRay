@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "skills": {
+    "sentry-cli": {
+      "source": "cli.sentry.dev",
+      "sourceType": "well-known",
+      "computedHash": "ce2ca9f7b6104fc0ace4fc71689beb3012c6c86581ce39621475e98674f201f8"
+    },
+    "sentry-fix-issues": {
+      "source": "getsentry/sentry-for-ai",
+      "sourceType": "github",
+      "skillPath": "skills/sentry-fix-issues/SKILL.md",
+      "computedHash": "0ef2103f20d698acc56d856a07a372a0a68cb02bad654d0dacb4e2ffe87e98b5"
+    }
+  }
+}
