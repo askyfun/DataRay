@@ -13,14 +13,7 @@ import {
   SaveOutlined,
   TableOutlined,
 } from '@ant-design/icons';
-import {
-  closestCenter,
-  DndContext,
-  DragEndEvent,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
+import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import {
   Button,
   Card,
@@ -59,14 +52,15 @@ interface ChartCanvasProps {
 const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
   const getChartOption = useCallback(() => {
     const { queryConfig, chartBuilderFields } = useStore.getState();
+    const fieldMap = new Map(chartBuilderFields.map((f) => [f.id, f]));
+
     const dimensionIds = queryConfig.dimensionGroups.flatMap((g) => g.fields);
-    const dimensionFields = chartBuilderFields
-      .filter((f) => dimensionIds.includes(f.id))
-      .map((f) => f.name);
+    const dimensionFields = dimensionIds
+      .map((id) => fieldMap.get(id)?.name)
+      .filter(Boolean) as string[];
+
     const metricIds = queryConfig.metricGroups.flatMap((g) => g.fields);
-    const metricFields = chartBuilderFields
-      .filter((f) => metricIds.includes(f.id))
-      .map((f) => f.name);
+    const metricFields = metricIds.map((id) => fieldMap.get(id)?.name).filter(Boolean) as string[];
 
     if (dimensionFields.length === 0 || metricFields.length === 0 || data.length === 0) {
       return null;
@@ -91,6 +85,11 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
       },
     };
 
+    // 多维度时 series key 是维度值，单维度时是指标名
+    const dataKeys = data.length > 0 ? Object.keys(data[0]) : [];
+    const seriesFields = dataKeys.filter((k) => k !== xAxisField);
+    const effectiveSeries = seriesFields.length > 0 ? seriesFields : metricFields;
+
     switch (config.chartType) {
       case 'line':
         return {
@@ -98,14 +97,22 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
           xAxis: {
             type: 'category',
             data: xAxisData,
+            axisLabel: {
+              rotate: xAxisData.length > 10 ? 30 : 0,
+              formatter: (val: string) => {
+                // 截断 "+0000 UTC" 后缀，保留日期+时间
+                return val.replace(/\s*\+\d{4}\s*UTC$/, '');
+              },
+            },
           },
           yAxis: {
             type: 'value',
           },
-          series: metricFields.map((yField) => ({
+          series: effectiveSeries.map((yField) => ({
             name: yField,
             type: 'line',
-            data: data.map((item) => item[yField]),
+            connectNulls: true,
+            data: data.map((item) => item[yField] ?? null),
           })),
         };
 
@@ -115,14 +122,18 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
           xAxis: {
             type: 'category',
             data: xAxisData,
+            axisLabel: {
+              rotate: xAxisData.length > 10 ? 30 : 0,
+              formatter: (val: string) => val.replace(/\s*\+\d{4}\s*UTC$/, ''),
+            },
           },
           yAxis: {
             type: 'value',
           },
-          series: metricFields.map((yField) => ({
+          series: effectiveSeries.map((yField) => ({
             name: yField,
             type: 'bar',
-            data: data.map((item) => item[yField]),
+            data: data.map((item) => item[yField] ?? null),
           })),
         };
 
@@ -168,15 +179,20 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
           xAxis: {
             type: 'category',
             data: xAxisData,
+            axisLabel: {
+              rotate: xAxisData.length > 10 ? 30 : 0,
+              formatter: (val: string) => val.replace(/\s*\+\d{4}\s*UTC$/, ''),
+            },
           },
           yAxis: {
             type: 'value',
           },
-          series: metricFields.map((yField) => ({
+          series: effectiveSeries.map((yField) => ({
             name: yField,
             type: 'line',
             areaStyle: {},
-            data: data.map((item) => item[yField]),
+            connectNulls: true,
+            data: data.map((item) => item[yField] ?? null),
           })),
         };
 
@@ -370,8 +386,10 @@ const ChartBuilder: React.FC = () => {
     updateFilter,
     addDimensionField,
     removeDimensionField,
+    reorderDimensionField,
     addMetricField,
     removeMetricField,
+    reorderMetricField,
     setMetricAggregation,
     setMetricAlias,
     autoQuery,
@@ -408,12 +426,12 @@ const ChartBuilder: React.FC = () => {
 
       if (!over) return;
 
+      // Add from sidebar
       const fieldData = active.data.current;
-      const overData = over.data.current;
-
       if (!fieldData || fieldData.type !== 'field') return;
 
       const field = fieldData.field as ChartField;
+      const overData = over.data.current;
       const dropZoneType = overData?.type as 'dimension' | 'metric' | 'filter';
 
       if (dropZoneType === 'dimension') {
@@ -443,12 +461,14 @@ const ChartBuilder: React.FC = () => {
 
   const getDimensionFields = useCallback(() => {
     const dimensionIds = queryConfig.dimensionGroups.flatMap((g) => g.fields);
-    return chartBuilderFields.filter((f) => dimensionIds.includes(f.id));
+    const fieldMap = new Map(chartBuilderFields.map((f) => [f.id, f]));
+    return dimensionIds.map((id) => fieldMap.get(id)).filter(Boolean) as ChartField[];
   }, [queryConfig.dimensionGroups, chartBuilderFields]);
 
   const getMetricFields = useCallback(() => {
     const metricIds = queryConfig.metricGroups.flatMap((g) => g.fields);
-    return chartBuilderFields.filter((f) => metricIds.includes(f.id));
+    const fieldMap = new Map(chartBuilderFields.map((f) => [f.id, f]));
+    return metricIds.map((id) => fieldMap.get(id)).filter(Boolean) as ChartField[];
   }, [queryConfig.metricGroups, chartBuilderFields]);
 
   const buildChartQueryRequest = useCallback((): ChartQueryRequest | null => {
@@ -556,12 +576,17 @@ const ChartBuilder: React.FC = () => {
     if (!selectedDatasetId) return;
 
     const state = useStore.getState();
-    const dimFields = state.chartBuilderFields.filter((f) =>
-      state.queryConfig.dimensionGroups.some((g) => g.fields.includes(f.id))
-    );
-    const metFields = state.chartBuilderFields.filter((f) =>
-      state.queryConfig.metricGroups.some((g) => g.fields.includes(f.id))
-    );
+    const fieldMap = new Map(state.chartBuilderFields.map((f) => [f.id, f]));
+
+    const dimIds = state.queryConfig.dimensionGroups.flatMap((g) => g.fields);
+    const dimFields = dimIds
+      .map((id) => fieldMap.get(id))
+      .filter((f): f is ChartField => f !== undefined);
+
+    const metIds = state.queryConfig.metricGroups.flatMap((g) => g.fields);
+    const metFields = metIds
+      .map((id) => fieldMap.get(id))
+      .filter((f): f is ChartField => f !== undefined);
 
     if (dimFields.length === 0 && metFields.length === 0) return;
 
@@ -596,12 +621,17 @@ const ChartBuilder: React.FC = () => {
     if (!autoQuery) return;
     if (!selectedDatasetId) return;
 
-    const dimFields = chartBuilderFields.filter((f) =>
-      queryConfig.dimensionGroups.some((g) => g.fields.includes(f.id))
-    );
-    const metFields = chartBuilderFields.filter((f) =>
-      queryConfig.metricGroups.some((g) => g.fields.includes(f.id))
-    );
+    const fieldMap = new Map(chartBuilderFields.map((f) => [f.id, f]));
+
+    const dimIds = queryConfig.dimensionGroups.flatMap((g) => g.fields);
+    const dimFields = dimIds
+      .map((id) => fieldMap.get(id))
+      .filter((f): f is ChartField => f !== undefined);
+
+    const metIds = queryConfig.metricGroups.flatMap((g) => g.fields);
+    const metFields = metIds
+      .map((id) => fieldMap.get(id))
+      .filter((f): f is ChartField => f !== undefined);
 
     if (dimFields.length === 0 && metFields.length === 0) return;
 
@@ -732,12 +762,16 @@ const ChartBuilder: React.FC = () => {
 
   const renderPreview = () => {
     if (chartBuilderConfig.chartType === 'table' || chartBuilderConfig.chartType === 'pivot') {
+      const dimensionFields = getDimensionFields();
+      const metricFields = getMetricFields();
       return (
         <TableChart
           data={chartData}
           loading={chartDataLoading}
           queryConfig={queryConfig}
           columns={tableColumns}
+          dimensionNames={dimensionFields.map((f) => f.name)}
+          metricNames={metricFields.map((f) => f.name)}
           pagination={chartBuilderConfig.chartType === 'table' ? tablePagination : undefined}
           onPageChange={chartBuilderConfig.chartType === 'table' ? handlePageChange : undefined}
         />
@@ -903,6 +937,7 @@ const ChartBuilder: React.FC = () => {
                 onRemoveField={removeDimensionField}
                 onAggregationChange={setMetricAggregation}
                 onAddField={(field) => addDimensionField(field)}
+                onReorderField={reorderDimensionField}
               />
 
               <QueryConfigRow
@@ -914,6 +949,7 @@ const ChartBuilder: React.FC = () => {
                 onRemoveField={removeMetricField}
                 onAggregationChange={setMetricAggregation}
                 onAddField={(field) => addMetricField(field)}
+                onReorderField={reorderMetricField}
                 onOpenSettings={(field) => {
                   const alias = prompt('输入字段别名:', field.name);
                   if (alias !== null) {
@@ -968,6 +1004,7 @@ const ChartBuilder: React.FC = () => {
                 onRemoveField={removeDimensionField}
                 onAggregationChange={setMetricAggregation}
                 onAddField={(field) => addDimensionField(field)}
+                onReorderField={reorderDimensionField}
               />
 
               <QueryConfigRow
@@ -979,6 +1016,7 @@ const ChartBuilder: React.FC = () => {
                 onRemoveField={removeMetricField}
                 onAggregationChange={setMetricAggregation}
                 onAddField={(field) => addMetricField(field)}
+                onReorderField={reorderMetricField}
                 onOpenSettings={(field) => {
                   const alias = prompt('输入字段别名:', field.name);
                   if (alias !== null) {
@@ -1013,7 +1051,7 @@ const ChartBuilder: React.FC = () => {
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <Layout style={{ minHeight: 'calc(100vh - 120px)' }}>
         {renderHeader()}
 

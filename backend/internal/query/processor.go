@@ -3,6 +3,7 @@ package query
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 // Processor 接口定义
@@ -174,36 +175,109 @@ func (p *AxisProcessor) Process(rows []map[string]any, dims []string, metrics []
 
 	dimField := dims[0]
 
-	// X 轴数据
-	xAxis := make([]string, len(rows))
-	for i, row := range rows {
-		val := row[dimField]
-		if val != nil {
-			xAxis[i] = toString(val)
-		}
-	}
-
-	// Series 数据
-	series := make([]AxisSeries, len(metrics))
-	for j, metric := range metrics {
-		metricAlias := metric.ResolveAlias()
-		data := make([]any, len(rows))
-
+	// 单维度：保持原有逻辑
+	if len(dims) == 1 {
+		xAxis := make([]string, len(rows))
 		for i, row := range rows {
-			val := row[metricAlias]
-			data[i] = val
+			val := row[dimField]
+			if val != nil {
+				xAxis[i] = toString(val)
+			}
 		}
 
-		series[j] = AxisSeries{
-			Name: metricAlias,
-			Data: data,
+		series := make([]AxisSeries, len(metrics))
+		for j, metric := range metrics {
+			metricAlias := metric.ResolveAlias()
+			data := make([]any, len(rows))
+			for i, row := range rows {
+				data[i] = row[metricAlias]
+			}
+			series[j] = AxisSeries{Name: metricAlias, Data: data}
+		}
+
+		return &AxisResponse{XAxis: xAxis, Series: series}, nil
+	}
+
+	// 多维度：第一个维度为 X 轴，后续维度值组合为 series
+	// 1. 收集去重的 X 轴值（保持出现顺序）
+	xAxisMap := make(map[string]bool)
+	var xAxisOrder []string
+	for _, row := range rows {
+		xVal := toString(row[dimField])
+		if !xAxisMap[xVal] {
+			xAxisMap[xVal] = true
+			xAxisOrder = append(xAxisOrder, xVal)
 		}
 	}
 
-	return &AxisResponse{
-		XAxis:  xAxis,
-		Series: series,
-	}, nil
+	// 2. 构建 series key → 指标数据映射
+	type seriesKey struct {
+		metricAlias string
+		dimCombo    string
+	}
+	seriesData := make(map[seriesKey][]any)
+	seriesOrder := make([]seriesKey, 0)
+
+	// 先按维度组合顺序收集所有 dimCombo
+	dimComboOrder := make([]string, 0)
+	dimComboSeen := make(map[string]bool)
+
+	for _, row := range rows {
+		var dimParts []string
+		for _, d := range dims[1:] {
+			dimParts = append(dimParts, toString(row[d]))
+		}
+		dimCombo := strings.Join(dimParts, " - ")
+		if !dimComboSeen[dimCombo] {
+			dimComboSeen[dimCombo] = true
+			dimComboOrder = append(dimComboOrder, dimCombo)
+		}
+	}
+
+	// 按 metric → dimCombo 顺序构建 series
+	for _, metric := range metrics {
+		alias := metric.ResolveAlias()
+		for _, dimCombo := range dimComboOrder {
+			key := seriesKey{metricAlias: alias, dimCombo: dimCombo}
+			seriesOrder = append(seriesOrder, key)
+			seriesData[key] = make([]any, len(xAxisOrder))
+		}
+	}
+
+	// 填充数据
+	for _, row := range rows {
+		xVal := toString(row[dimField])
+
+		var dimParts []string
+		for _, d := range dims[1:] {
+			dimParts = append(dimParts, toString(row[d]))
+		}
+		dimCombo := strings.Join(dimParts, " - ")
+
+		for _, metric := range metrics {
+			alias := metric.ResolveAlias()
+			key := seriesKey{metricAlias: alias, dimCombo: dimCombo}
+
+			for xi, xv := range xAxisOrder {
+				if xv == xVal {
+					seriesData[key][xi] = row[alias]
+					break
+				}
+			}
+		}
+	}
+
+	// 3. 构建结果
+	series := make([]AxisSeries, len(seriesOrder))
+	for i, key := range seriesOrder {
+		name := key.dimCombo
+		if len(metrics) > 1 {
+			name = key.metricAlias + " - " + key.dimCombo
+		}
+		series[i] = AxisSeries{Name: name, Data: seriesData[key]}
+	}
+
+	return &AxisResponse{XAxis: xAxisOrder, Series: series}, nil
 }
 
 // ScatterProcessor Scatter 图表处理器

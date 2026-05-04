@@ -1,4 +1,4 @@
-import { CloseOutlined, SettingOutlined } from '@ant-design/icons';
+import { CloseOutlined, HolderOutlined, SettingOutlined } from '@ant-design/icons';
 import { Dropdown, Menu, Tag } from 'antd';
 import React from 'react';
 import type { ChartField } from '@/store';
@@ -17,6 +17,15 @@ export interface FieldPillProps {
   onRemove?: () => void;
   /** 聚合方式变更回调 */
   onAggregationChange?: (aggregation: string) => void;
+  /** 可排序模式：传入 sortable 返回的 props */
+  sortable?: {
+    isDragging?: boolean;
+    attributes?: React.HTMLAttributes<HTMLElement>;
+    listeners?: { [key: string]: unknown };
+    setNodeRef?: (node: HTMLElement | null) => void;
+    setActivatorNodeRef?: (node: HTMLElement | null) => void;
+    style?: React.CSSProperties;
+  };
 }
 
 const AGGREGATION_OPTIONS = [
@@ -36,6 +45,7 @@ const FieldPill: React.FC<FieldPillProps> = ({
   onSettings,
   onRemove,
   onAggregationChange,
+  sortable,
 }) => {
   const getColorByType = () => {
     if (fieldType === 'dimension') {
@@ -71,7 +81,7 @@ const FieldPill: React.FC<FieldPillProps> = ({
     />
   );
 
-  return (
+  const content = (
     <Tag
       color={getColorByType()}
       closable={false}
@@ -83,8 +93,18 @@ const FieldPill: React.FC<FieldPillProps> = ({
         margin: '2px',
         borderRadius: '12px',
         cursor: 'pointer',
+        opacity: sortable?.isDragging ? 0.4 : 1,
+        ...sortable?.style,
       }}
+      ref={sortable?.setNodeRef}
+      {...(sortable?.attributes || {})}
     >
+      {sortable && (
+        <span ref={sortable.setActivatorNodeRef} {...(sortable.listeners || {})}>
+          <HolderOutlined style={{ fontSize: '12px', opacity: 0.5, cursor: 'grab' }} />
+        </span>
+      )}
+
       {fieldType === 'metric' ? (
         <Dropdown overlay={aggregationMenu} trigger={['click']}>
           <span style={{ fontWeight: 500 }}>{getDisplayText()}</span>
@@ -114,6 +134,8 @@ const FieldPill: React.FC<FieldPillProps> = ({
       )}
     </Tag>
   );
+
+  return content;
 };
 
 export default FieldPill;

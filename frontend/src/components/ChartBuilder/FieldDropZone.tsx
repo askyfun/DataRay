@@ -1,9 +1,15 @@
-import { PlusOutlined } from '@ant-design/icons';
+import {
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  CloseOutlined,
+  HolderOutlined,
+  PlusOutlined,
+  SettingOutlined,
+} from '@ant-design/icons';
 import { useDroppable } from '@dnd-kit/core';
-import { Button, Dropdown } from 'antd';
+import { Button, Dropdown, Tag } from 'antd';
 import React, { useState } from 'react';
 import type { ChartField } from '@/store';
-import FieldPill from './FieldPill';
 
 export type DropZoneType = 'dimension' | 'metric' | 'filter';
 
@@ -11,7 +17,6 @@ export interface FieldDropZoneProps {
   zoneType: DropZoneType;
   label: string;
   fields: ChartField[];
-  /** 所有可用字段列表，用于点击选择 */
   availableFields?: ChartField[];
   aggregations?: Record<string, string>;
   aliases?: Record<string, string>;
@@ -19,8 +24,121 @@ export interface FieldDropZoneProps {
   onAggregationChange?: (fieldId: string, aggregation: string) => void;
   onOpenSettings?: (field: ChartField) => void;
   onAddField?: (field: ChartField) => void;
+  onReorderField?: (oldIndex: number, newIndex: number) => void;
   emptyText?: string;
 }
+
+const AGGREGATION_OPTIONS = [
+  { label: '求和', value: 'sum' },
+  { label: '平均', value: 'avg' },
+  { label: '计数', value: 'count' },
+  { label: '最大值', value: 'max' },
+  { label: '最小值', value: 'min' },
+  { label: '无聚合', value: 'none' },
+];
+
+interface FieldPillInlineProps {
+  field: ChartField;
+  zoneType: DropZoneType;
+  aggregations: Record<string, string>;
+  aliases: Record<string, string>;
+  index: number;
+  total: number;
+  onRemoveField?: (fieldId: string) => void;
+  onAggregationChange?: (fieldId: string, aggregation: string) => void;
+  onOpenSettings?: (field: ChartField) => void;
+  onMoveLeft?: () => void;
+  onMoveRight?: () => void;
+}
+
+const FieldPillInline: React.FC<FieldPillInlineProps> = ({
+  field,
+  zoneType,
+  aggregations,
+  aliases,
+  index,
+  total,
+  onRemoveField,
+  onOpenSettings,
+  onMoveLeft,
+  onMoveRight,
+}) => {
+  const fieldType = zoneType === 'filter' ? 'dimension' : zoneType;
+  const agg = (aggregations[field.id] || 'sum') as string;
+  const alias = aliases[field.id];
+
+  const getColor = () => {
+    if (fieldType === 'dimension') {
+      return field.dataType === 'date' || field.dataType === 'timestamp' ? 'purple' : 'blue';
+    }
+    return 'green';
+  };
+
+  const getDisplayText = () => {
+    if (alias) return alias;
+    if (fieldType === 'metric' && agg !== 'none') {
+      const label = AGGREGATION_OPTIONS.find((o) => o.value === agg)?.label || agg;
+      return `${label}(${field.name})`;
+    }
+    return field.name;
+  };
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, margin: '2px' }}>
+      <Tag
+        color={getColor()}
+        closable={false}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          padding: '4px 8px',
+          margin: 0,
+          borderRadius: '12px',
+        }}
+      >
+        <HolderOutlined style={{ fontSize: '12px', opacity: 0.4 }} />
+        <span style={{ fontWeight: 500 }}>{getDisplayText()}</span>
+        {onOpenSettings && (
+          <SettingOutlined
+            style={{ fontSize: '12px', opacity: 0.6, cursor: 'pointer' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenSettings(field);
+            }}
+          />
+        )}
+        <CloseOutlined
+          style={{ fontSize: '12px', opacity: 0.6, cursor: 'pointer' }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemoveField?.(field.id);
+          }}
+        />
+      </Tag>
+      {onMoveLeft && (
+        <ArrowLeftOutlined
+          style={{
+            fontSize: '10px',
+            opacity: index > 0 ? 0.6 : 0.2,
+            cursor: index > 0 ? 'pointer' : 'default',
+          }}
+          onClick={() => index > 0 && onMoveLeft()}
+        />
+      )}
+      {onMoveRight && (
+        <ArrowRightOutlined
+          style={{
+            fontSize: '10px',
+            opacity: index < total - 1 ? 0.6 : 0.2,
+            cursor: index < total - 1 ? 'pointer' : 'default',
+          }}
+          onClick={() => index < total - 1 && onMoveRight()}
+        />
+      )}
+    </span>
+  );
+};
 
 const FieldDropZone: React.FC<FieldDropZoneProps> = ({
   zoneType,
@@ -29,9 +147,10 @@ const FieldDropZone: React.FC<FieldDropZoneProps> = ({
   aggregations = {},
   aliases = {},
   onRemoveField,
-  onAggregationChange,
+  onAggregationChange: _onAggregationChange,
   onOpenSettings,
   onAddField,
+  onReorderField,
   emptyText,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
@@ -143,24 +262,20 @@ const FieldDropZone: React.FC<FieldDropZoneProps> = ({
         )
       ) : (
         <>
-          {fields.map((field) => (
-            <FieldPill
+          {fields.map((field, index) => (
+            <FieldPillInline
               key={field.id}
               field={field}
-              fieldType={zoneType === 'filter' ? 'dimension' : zoneType}
-              aggregation={
-                (aggregations[field.id] || 'sum') as
-                  | 'sum'
-                  | 'avg'
-                  | 'count'
-                  | 'max'
-                  | 'min'
-                  | 'none'
-              }
-              alias={aliases[field.id]}
-              onRemove={() => onRemoveField?.(field.id)}
-              onAggregationChange={(agg) => onAggregationChange?.(field.id, agg)}
-              onSettings={() => onOpenSettings?.(field)}
+              zoneType={zoneType}
+              aggregations={aggregations}
+              aliases={aliases}
+              index={index}
+              total={fields.length}
+              onRemoveField={onRemoveField}
+              onAggregationChange={_onAggregationChange}
+              onOpenSettings={onOpenSettings}
+              onMoveLeft={onReorderField ? () => onReorderField(index, index - 1) : undefined}
+              onMoveRight={onReorderField ? () => onReorderField(index, index + 1) : undefined}
             />
           ))}
           {filteredFields.length > 0 && (

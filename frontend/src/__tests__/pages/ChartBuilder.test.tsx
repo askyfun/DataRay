@@ -151,13 +151,15 @@ describe('ChartBuilder', () => {
         code: 20000,
         msg: 'ok',
         data: {
-          columns: ['region'],
-          data: [{ region: 'East' }],
-          pagination: {
-            page: 1,
-            page_size: 10,
-            total: 42,
-            total_pages: 5,
+          data: {
+            columns: ['region'],
+            data: [{ region: 'East' }],
+            pagination: {
+              page: 1,
+              page_size: 10,
+              total: 42,
+              total_pages: 5,
+            },
           },
           select_sql: 'select region from sales',
           count_sql: 'select count(*) from sales',

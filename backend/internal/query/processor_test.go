@@ -231,6 +231,142 @@ func TestAxisProcessor_NullDimension(t *testing.T) {
 	}
 }
 
+// TestAxisProcessor_MultiDims_TwoDims 验证双维度：第一个维度为 X 轴，第二个维度每个值一条线
+func TestAxisProcessor_MultiDims_TwoDims(t *testing.T) {
+	p := &AxisProcessor{}
+	rows := []map[string]any{
+		{"date": "2024-01", "city": "Beijing", "sales": 100},
+		{"date": "2024-01", "city": "Shanghai", "sales": 200},
+		{"date": "2024-02", "city": "Beijing", "sales": 150},
+		{"date": "2024-02", "city": "Shanghai", "sales": 250},
+	}
+	metrics := []MetricConfig{{Field: "sales", Agg: AggSum}}
+	resp, err := p.Process(rows, []string{"date", "city"}, metrics)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	axisResp, ok := resp.(*AxisResponse)
+	if !ok {
+		t.Fatalf("expected *AxisResponse, got %T", resp)
+	}
+
+	// X 轴应该是第一个维度的去重值
+	if len(axisResp.XAxis) != 2 {
+		t.Fatalf("expected XAxis length 2, got %d: %v", len(axisResp.XAxis), axisResp.XAxis)
+	}
+	if axisResp.XAxis[0] != "2024-01" || axisResp.XAxis[1] != "2024-02" {
+		t.Errorf("expected XAxis=['2024-01','2024-02'], got %v", axisResp.XAxis)
+	}
+
+	// 每个第二个维度值一条线
+	if len(axisResp.Series) != 2 {
+		t.Fatalf("expected Series length 2, got %d", len(axisResp.Series))
+	}
+
+	// series 按出现顺序：Beijing, Shanghai
+	seriesMap := map[string][]any{}
+	for _, s := range axisResp.Series {
+		seriesMap[s.Name] = s.Data
+	}
+
+	beijingData, ok := seriesMap["Beijing"]
+	if !ok {
+		t.Fatalf("expected series 'Beijing', got names: %v", getSeriesNames(axisResp.Series))
+	}
+	if beijingData[0] != 100 || beijingData[1] != 150 {
+		t.Errorf("expected Beijing data=[100,150], got %v", beijingData)
+	}
+
+	shanghaiData, ok := seriesMap["Shanghai"]
+	if !ok {
+		t.Fatalf("expected series 'Shanghai'")
+	}
+	if shanghaiData[0] != 200 || shanghaiData[1] != 250 {
+		t.Errorf("expected Shanghai data=[200,250], got %v", shanghaiData)
+	}
+}
+
+// TestAxisProcessor_MultiDims_ThreeDims 验证三个维度：后续维度值用 " - " 拼接
+func TestAxisProcessor_MultiDims_ThreeDims(t *testing.T) {
+	p := &AxisProcessor{}
+	rows := []map[string]any{
+		{"date": "2024-01", "country": "CN", "city": "Beijing", "sales": 100},
+		{"date": "2024-01", "country": "CN", "city": "Shanghai", "sales": 200},
+		{"date": "2024-01", "country": "US", "city": "NY", "sales": 150},
+	}
+	metrics := []MetricConfig{{Field: "sales", Agg: AggSum}}
+	resp, err := p.Process(rows, []string{"date", "country", "city"}, metrics)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	axisResp, ok := resp.(*AxisResponse)
+	if !ok {
+		t.Fatalf("expected *AxisResponse, got %T", resp)
+	}
+
+	if len(axisResp.XAxis) != 1 {
+		t.Fatalf("expected XAxis length 1, got %d", len(axisResp.XAxis))
+	}
+
+	// 三个维度时，series name 应为 "CN - Beijing", "CN - Shanghai", "US - NY"
+	if len(axisResp.Series) != 3 {
+		t.Fatalf("expected Series length 3, got %d", len(axisResp.Series))
+	}
+
+	names := getSeriesNames(axisResp.Series)
+	expected := []string{"CN - Beijing", "CN - Shanghai", "US - NY"}
+	for i, name := range names {
+		if name != expected[i] {
+			t.Errorf("expected series[%d] name=%q, got %q", i, expected[i], name)
+		}
+	}
+}
+
+// TestAxisProcessor_MultiDims_MultipleMetrics 验证多维度多指标：每个 metric×dim 组合一条线
+func TestAxisProcessor_MultiDims_MultipleMetrics(t *testing.T) {
+	p := &AxisProcessor{}
+	rows := []map[string]any{
+		{"date": "2024-01", "city": "Beijing", "revenue": 100, "cost": 50},
+		{"date": "2024-01", "city": "Shanghai", "revenue": 200, "cost": 80},
+	}
+	metrics := []MetricConfig{
+		{Field: "revenue", Agg: AggSum},
+		{Field: "cost", Agg: AggSum},
+	}
+	resp, err := p.Process(rows, []string{"date", "city"}, metrics)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	axisResp, ok := resp.(*AxisResponse)
+	if !ok {
+		t.Fatalf("expected *AxisResponse, got %T", resp)
+	}
+
+	// 2 metrics × 2 cities = 4 series
+	if len(axisResp.Series) != 4 {
+		t.Fatalf("expected Series length 4, got %d: %v", len(axisResp.Series), getSeriesNames(axisResp.Series))
+	}
+
+	names := getSeriesNames(axisResp.Series)
+	expected := []string{"revenue - Beijing", "revenue - Shanghai", "cost - Beijing", "cost - Shanghai"}
+	for i, name := range names {
+		if name != expected[i] {
+			t.Errorf("expected series[%d] name=%q, got %q", i, expected[i], name)
+		}
+	}
+}
+
+func getSeriesNames(series []AxisSeries) []string {
+	names := make([]string, len(series))
+	for i, s := range series {
+		names[i] = s.Name
+	}
+	return names
+}
+
 // TestGetProcessor_BarLineArea 验证 GetProcessor 返回正确的处理器类型
 func TestGetProcessor_BarLineArea(t *testing.T) {
 	cases := []struct {

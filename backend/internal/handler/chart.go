@@ -149,5 +149,5 @@ func (h *ChartHandler) Query(c *gin.Context) {
 		response.InternalError(c, err.Error())
 		return
 	}
-	response.Success(c, result.Data)
+	response.Success(c, result)
 }

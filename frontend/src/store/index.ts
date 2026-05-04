@@ -1,3 +1,4 @@
+import { arrayMove } from '@dnd-kit/sortable';
 import { create } from 'zustand';
 import {
   AxisResponse,
@@ -152,8 +153,10 @@ export interface AppState {
   updateFilter: (id: string, filter: Partial<FilterCondition>) => void;
   addDimensionField: (field: ChartField) => void;
   removeDimensionField: (fieldId: string) => void;
+  reorderDimensionField: (oldIndex: number, newIndex: number) => void;
   addMetricField: (field: ChartField) => void;
   removeMetricField: (fieldId: string) => void;
+  reorderMetricField: (oldIndex: number, newIndex: number) => void;
   setMetricAggregation: (fieldId: string, aggregation: string) => void;
   setMetricAlias: (fieldId: string, alias: string) => void;
   toggleAutoQuery: () => void;
@@ -540,6 +543,22 @@ export const useStore = create<AppState>((set) => ({
     }));
   },
 
+  reorderDimensionField: (oldIndex: number, newIndex: number) => {
+    set((state) => {
+      const group = state.queryConfig.dimensionGroups[0];
+      if (!group) return state;
+      return {
+        queryConfig: {
+          ...state.queryConfig,
+          dimensionGroups: [
+            { ...group, fields: arrayMove(group.fields, oldIndex, newIndex) },
+            ...state.queryConfig.dimensionGroups.slice(1),
+          ],
+        },
+      };
+    });
+  },
+
   addMetricField: (field: ChartField) => {
     set((state) => {
       const existingFields = state.queryConfig.metricGroups[0]?.fields || [];
@@ -574,6 +593,22 @@ export const useStore = create<AppState>((set) => ({
     }));
   },
 
+  reorderMetricField: (oldIndex: number, newIndex: number) => {
+    set((state) => {
+      const group = state.queryConfig.metricGroups[0];
+      if (!group) return state;
+      return {
+        queryConfig: {
+          ...state.queryConfig,
+          metricGroups: [
+            { ...group, fields: arrayMove(group.fields, oldIndex, newIndex) },
+            ...state.queryConfig.metricGroups.slice(1),
+          ],
+        },
+      };
+    });
+  },
+
   setMetricAggregation: (fieldId: string, aggregation: string) => {
     set((state) => ({
       metricAggregations: { ...state.metricAggregations, [fieldId]: aggregation },
@@ -604,13 +639,15 @@ export const useStore = create<AppState>((set) => ({
     set({ chartDataLoading: true });
     try {
       const response = await chartsApi.executeChartQuery(request);
-      const responseData = response.data.data; // 包含 data + select_sql + count_sql
+      const result = response.data.data; // { data, select_sql, count_sql }
+      const chartData = result?.data;
+      const queryResponse = result as ChartQueryResponse;
 
-      if (request.chart_type === 'table' && responseData && 'pagination' in responseData) {
-        const tableData = responseData as TableResponse;
+      if (request.chart_type === 'table' && chartData && 'pagination' in chartData) {
+        const tableData = chartData as TableResponse;
         set({
           chartData: tableData.data,
-          chartQueryResponse: responseData as ChartQueryResponse,
+          chartQueryResponse: queryResponse,
           tablePagination: {
             page: tableData.pagination.page,
             pageSize: tableData.pagination.page_size,
@@ -619,15 +656,15 @@ export const useStore = create<AppState>((set) => ({
           tableColumns: tableData.columns || [],
           chartDataLoading: false,
         });
-      } else if (request.chart_type === 'pie' && responseData && 'data' in responseData) {
-        const pieData = responseData as PieResponse;
+      } else if (request.chart_type === 'pie' && chartData && 'data' in chartData) {
+        const pieData = chartData as PieResponse;
         const transformedData = pieData.data.map((item: any) => ({
           name: item.name,
           value: item.value,
         }));
         set({
           chartData: transformedData,
-          chartQueryResponse: responseData as ChartQueryResponse,
+          chartQueryResponse: queryResponse,
           chartDataLoading: false,
         });
       } else if (
@@ -635,7 +672,7 @@ export const useStore = create<AppState>((set) => ({
         request.chart_type === 'line' ||
         request.chart_type === 'area'
       ) {
-        const axisData = responseData as AxisResponse;
+        const axisData = chartData as AxisResponse;
         const transformedData = axisData.x_axis.map((xVal: string, idx: number) => {
           const row: Record<string, any> = { [request.dims[0] || 'x']: xVal };
           axisData.series.forEach((series: any) => {
@@ -645,13 +682,13 @@ export const useStore = create<AppState>((set) => ({
         });
         set({
           chartData: transformedData,
-          chartQueryResponse: responseData as ChartQueryResponse,
+          chartQueryResponse: queryResponse,
           chartDataLoading: false,
         });
       } else {
         set({
-          chartData: Array.isArray(responseData) ? responseData : [],
-          chartQueryResponse: responseData,
+          chartData: Array.isArray(chartData) ? chartData : [],
+          chartQueryResponse: queryResponse,
           chartDataLoading: false,
         });
       }

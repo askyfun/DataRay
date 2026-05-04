@@ -21,6 +21,8 @@ export interface QueryConfigRowProps {
   onOpenSettings?: (field: ChartField) => void;
   /** 添加字段回调 */
   onAddField?: (field: ChartField) => void;
+  /** 重排序回调 */
+  onReorderField?: (oldIndex: number, newIndex: number) => void;
 }
 
 const ROW_CONFIG: Record<DropZoneType, { label: string; color: string }> = {
@@ -39,6 +41,7 @@ const QueryConfigRow: React.FC<QueryConfigRowProps> = ({
   onAggregationChange,
   onOpenSettings,
   onAddField,
+  onReorderField,
 }) => {
   const config = ROW_CONFIG[rowType];
 
@@ -74,6 +77,7 @@ const QueryConfigRow: React.FC<QueryConfigRowProps> = ({
           onAggregationChange={onAggregationChange}
           onOpenSettings={onOpenSettings}
           onAddField={onAddField}
+          onReorderField={onReorderField}
         />
       </div>
     </div>

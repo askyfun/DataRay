@@ -10,6 +10,10 @@ interface TableChartProps {
   loading: boolean;
   queryConfig?: QueryConfig;
   columns?: string[];
+  /** 维度字段名列表，按用户拖入顺序 */
+  dimensionNames?: string[];
+  /** 指标字段名列表，按用户拖入顺序 */
+  metricNames?: string[];
   pagination?: {
     page: number;
     pageSize: number;
@@ -23,6 +27,8 @@ const TableChart: React.FC<TableChartProps> = ({
   loading,
   queryConfig,
   columns: propColumns,
+  dimensionNames,
+  metricNames,
   pagination,
   onPageChange,
 }) => {
@@ -34,14 +40,43 @@ const TableChart: React.FC<TableChartProps> = ({
           ? Object.keys(data[0])
           : [];
 
-    return keys.map((key) => ({
+    // 按维度顺序 + 指标顺序排列，剩余字段追加到末尾
+    const orderedKeys: string[] = [];
+    const keySet = new Set(keys);
+
+    if (dimensionNames?.length || metricNames?.length) {
+      // 先按维度顺序
+      for (const name of dimensionNames || []) {
+        if (keySet.has(name)) {
+          orderedKeys.push(name);
+          keySet.delete(name);
+        }
+      }
+      // 再按指标顺序
+      for (const name of metricNames || []) {
+        if (keySet.has(name)) {
+          orderedKeys.push(name);
+          keySet.delete(name);
+        }
+      }
+      // 剩余字段追加
+      for (const key of keys) {
+        if (keySet.has(key)) {
+          orderedKeys.push(key);
+        }
+      }
+    } else {
+      orderedKeys.push(...keys);
+    }
+
+    return orderedKeys.map((key) => ({
       title: key,
       dataIndex: key,
       key,
       sorter: true,
       ellipsis: true,
     }));
-  }, [data, propColumns]);
+  }, [data, propColumns, dimensionNames, metricNames]);
 
   const handleTableChange: TableProps<any>['onChange'] = (tablePagination, _filters, sorter) => {
     if (onPageChange && tablePagination) {

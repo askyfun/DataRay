@@ -51,5 +51,7 @@ type ChartService interface {
 
 // ChartDataResult represents chart data result
 type ChartDataResult struct {
-	Data interface{} `json:"data"`
+	Data      interface{} `json:"data"`
+	SelectSQL string      `json:"select_sql,omitempty"`
+	CountSQL  string      `json:"count_sql,omitempty"`
 }

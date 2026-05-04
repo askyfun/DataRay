@@ -165,7 +165,11 @@ func (s *chartService) Query(ctx context.Context, req *entity.ChartQueryRequest)
 		return entity.ChartDataResult{}, fmt.Errorf("query execution failed: %w", err)
 	}
 
-	return entity.ChartDataResult{Data: result.Data}, nil
+	return entity.ChartDataResult{
+		Data:      result.Data,
+		SelectSQL: result.Select,
+		CountSQL:  result.Count,
+	}, nil
 }
 
 // Helper functions
