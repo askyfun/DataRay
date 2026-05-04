@@ -249,6 +249,24 @@ func TestExecutor_BarChart(t *testing.T) {
 	if result.Data == nil {
 		t.Error("Expected result data, got nil")
 	}
+
+	// Verify AxisResponse structure
+	axisResp, ok := result.Data.(*AxisResponse)
+	if !ok {
+		t.Fatalf("Expected *AxisResponse, got %T", result.Data)
+	}
+
+	if len(axisResp.XAxis) != 2 {
+		t.Errorf("Expected XAxis length 2, got %d", len(axisResp.XAxis))
+	}
+
+	if len(axisResp.Series) != 1 {
+		t.Errorf("Expected 1 series, got %d", len(axisResp.Series))
+	}
+
+	if result.Select == "" {
+		t.Error("Expected Select SQL to be generated")
+	}
 }
 
 func TestExecutor_LineChart(t *testing.T) {
@@ -288,6 +306,77 @@ func TestExecutor_LineChart(t *testing.T) {
 
 	if result.Data == nil {
 		t.Error("Expected result data, got nil")
+	}
+
+	// Verify AxisResponse structure
+	axisResp, ok := result.Data.(*AxisResponse)
+	if !ok {
+		t.Fatalf("Expected *AxisResponse, got %T", result.Data)
+	}
+
+	if len(axisResp.XAxis) != 2 {
+		t.Errorf("Expected XAxis length 2, got %d", len(axisResp.XAxis))
+	}
+
+	if len(axisResp.Series) != 1 {
+		t.Errorf("Expected 1 series, got %d", len(axisResp.Series))
+	}
+
+	if result.Select == "" {
+		t.Error("Expected Select SQL to be generated")
+	}
+}
+
+func TestExecutor_AreaChart(t *testing.T) {
+	dataset := &model.Dataset{
+		ID:        1,
+		Name:      "Test Dataset",
+		QueryType: "table",
+		TableName: sql.NullString{String: "metrics", Valid: true},
+		QuerySQL:  sql.NullString{Valid: false},
+	}
+
+	ds := &model.Datasource{
+		ID:   1,
+		Name: "Test DS",
+		Type: "postgresql",
+	}
+
+	conn := &MockConnection{
+		rows: []map[string]any{
+			{"date": "2024-01-01", "value": 100},
+			{"date": "2024-01-02", "value": 200},
+		},
+	}
+	executor := NewExecutor(conn, dataset, ds)
+
+	req := &ChartQueryRequest{
+		DatasetID: 1,
+		ChartType: ChartTypeArea,
+		Dims:      []string{"date"},
+		Metrics:   []MetricConfig{{Field: "value", Agg: AggSum}},
+	}
+
+	result, err := executor.Execute(context.Background(), req)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	axisResp, ok := result.Data.(*AxisResponse)
+	if !ok {
+		t.Fatalf("Expected *AxisResponse, got %T", result.Data)
+	}
+
+	if len(axisResp.XAxis) != 2 {
+		t.Errorf("Expected XAxis length 2, got %d", len(axisResp.XAxis))
+	}
+
+	if len(axisResp.Series) != 1 {
+		t.Errorf("Expected 1 series, got %d", len(axisResp.Series))
+	}
+
+	if result.Select == "" {
+		t.Error("Expected Select SQL to be generated")
 	}
 }
 

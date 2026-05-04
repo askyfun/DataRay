@@ -1,4 +1,4 @@
-export type ChartType = 'line' | 'bar' | 'pie' | 'scatter' | 'table';
+export type ChartType = 'line' | 'bar' | 'pie' | 'scatter' | 'table' | 'area';
 export type ChartQueryAggregation = 'sum' | 'avg' | 'count' | 'max' | 'min';
 
 export interface CreateChartRequest {
@@ -124,20 +124,6 @@ export type ChartDataResponse =
   | unknown[];
 
 export interface ChartQueryResponse {
-  data: ChartDataResponse;
-  generated_sql?: GeneratedSQL;
-}
-
-export interface ChartQueryResponse {
-  data: ChartDataResponse;
-  generated_sql?: GeneratedSQL;
-}
-
-export interface ChartQueryResponseData {
-  data: ChartDataResponse;
-  generated_sql?: GeneratedSQL;
-}
-export interface ChartQueryResponseData {
   data: ChartDataResponse;
   generated_sql?: GeneratedSQL;
 }

@@ -58,9 +58,15 @@ interface ChartCanvasProps {
 
 const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
   const getChartOption = useCallback(() => {
-    const { queryConfig } = useStore.getState();
-    const dimensionFields = queryConfig.dimensionGroups.flatMap((g) => g.fields);
-    const metricFields = queryConfig.metricGroups.flatMap((g) => g.fields);
+    const { queryConfig, chartBuilderFields } = useStore.getState();
+    const dimensionIds = queryConfig.dimensionGroups.flatMap((g) => g.fields);
+    const dimensionFields = chartBuilderFields
+      .filter((f) => dimensionIds.includes(f.id))
+      .map((f) => f.name);
+    const metricIds = queryConfig.metricGroups.flatMap((g) => g.fields);
+    const metricFields = chartBuilderFields
+      .filter((f) => metricIds.includes(f.id))
+      .map((f) => f.name);
 
     if (dimensionFields.length === 0 || metricFields.length === 0 || data.length === 0) {
       return null;
