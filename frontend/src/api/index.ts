@@ -248,14 +248,18 @@ export interface GeneratedSQL {
   count_sql?: string;
 }
 
-export type ChartQueryResponse = (
+export type ChartDataResponse =
   | TableResponse
   | PieResponse
   | AxisResponse
   | ScatterResponse
-  | unknown[]
-) &
-  GeneratedSQL;
+  | unknown[];
+
+export interface ChartQueryResponse {
+  data: ChartDataResponse;
+  select_sql?: string;
+  count_sql?: string;
+}
 
 // Create single axios instance with proper interceptors
 const apiClient: AxiosInstance = axios.create({

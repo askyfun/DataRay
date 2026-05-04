@@ -19,7 +19,7 @@ vi.mock('../../store', () => ({
 import { datasourcesApi } from '../../api';
 import { useStore } from '../../store';
 
-const mockUseStore = useStore as ReturnType<typeof vi.fn>;
+const mockUseStore = useStore as unknown as ReturnType<typeof vi.fn>;
 const mockGetTables = datasourcesApi.getTables as ReturnType<typeof vi.fn>;
 const mockGetTableColumns = datasourcesApi.getTableColumns as ReturnType<typeof vi.fn>;
 

@@ -1,9 +1,15 @@
 import { render, waitFor } from '@testing-library/react';
+import type { AxiosResponse } from 'axios';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { chartsApi, datasetsApi } from '../../api';
+import type { ApiResponse } from '../../lib/api/client';
 import ChartBuilder from '../../pages/ChartBuilder';
 import { useStore } from '../../store';
+
+function mockAxiosResponse<T>(data: ApiResponse<T>): AxiosResponse<ApiResponse<T>> {
+  return { data, status: 200, statusText: 'OK', headers: {}, config: {} as never };
+}
 
 vi.mock('echarts-for-react', () => ({
   default: () => <div data-testid="echarts" />,
@@ -88,10 +94,11 @@ describe('ChartBuilder', () => {
     vi.clearAllMocks();
     resetChartBuilderState();
 
-    mockGetDatasets.mockResolvedValue({
-      data: {
+    mockGetDatasets.mockResolvedValue(
+      mockAxiosResponse({
         code: 20000,
         msg: 'ok',
+        trace: '',
         data: [
           {
             id: 1,
@@ -104,13 +111,14 @@ describe('ChartBuilder', () => {
             columns: '[]',
           },
         ],
-      },
-    });
+      })
+    );
 
-    mockGetColumns.mockResolvedValue({
-      data: {
+    mockGetColumns.mockResolvedValue(
+      mockAxiosResponse({
         code: 20000,
         msg: 'ok',
+        trace: '',
         data: [
           {
             name: 'region',
@@ -120,13 +128,14 @@ describe('ChartBuilder', () => {
             role: 'dimension',
           },
         ],
-      },
-    });
+      })
+    );
 
-    mockGetChartById.mockResolvedValue({
-      data: {
+    mockGetChartById.mockResolvedValue(
+      mockAxiosResponse({
         code: 20000,
         msg: 'ok',
+        trace: '',
         data: {
           id: 1,
           name: 'Sales Table',
@@ -143,13 +152,14 @@ describe('ChartBuilder', () => {
             },
           }),
         },
-      },
-    });
+      })
+    );
 
-    mockExecuteChartQuery.mockResolvedValue({
-      data: {
+    mockExecuteChartQuery.mockResolvedValue(
+      mockAxiosResponse({
         code: 20000,
         msg: 'ok',
+        trace: '',
         data: {
           data: {
             columns: ['region'],
@@ -164,8 +174,8 @@ describe('ChartBuilder', () => {
           select_sql: 'select region from sales',
           count_sql: 'select count(*) from sales',
         },
-      },
-    });
+      })
+    );
   });
 
   it('does not repeat table auto query when the response only updates total pagination', async () => {
