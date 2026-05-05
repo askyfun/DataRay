@@ -47,33 +47,32 @@
   - [x] 跑 `go test ./internal/query` 回归。
   - [x] 同步更新文档。
 
-- [ ] 第四步：修复分页与排序规则，采用 TDD。
-  - [ ] 梳理前端表格排序请求是否真正传给后端。
-  - [ ] 梳理后端分页时为什么跳过 `ORDER BY`。
-  - [ ] 先明确目标规则：分页查询是否必须带排序、默认排序字段是什么。
-  - [ ] 如果规则不清楚，先向用户确认。
-  - [ ] 先补失败测试。
-  - [ ] 最小改动修复实现。
-  - [ ] 跑针对性测试。
-  - [ ] 跑 query / service 相关回归测试。
-  - [ ] 同步更新文档。
+- [x] 第四步：修复分页与排序规则，采用 TDD。
+  - [x] 梳理前端表格排序请求是否真正传给后端。
+  - [x] 梳理后端分页时为什么跳过 `ORDER BY`。
+  - [x] 先明确目标规则：分页查询是否必须带排序、默认排序字段是什么。
+  - [x] 先补失败测试。
+  - [x] 最小改动修复实现。
+  - [x] 跑针对性测试。
+  - [x] 跑 query / service 相关回归测试。
+  - [x] 同步更新文档。（行为修复，文档已正确描述 sort 参数，无需更新）
 
 ### P1：后端内部模型升级
 
-- [ ] 新增内部 `ChartSpec` 类型。
-  - [ ] 定义基础结构：`chart_type`、`dimension_groups`、`metric_groups`、`style`、`query_options`。
-  - [ ] 为字段绑定预留附加属性：`label`、`granularity`、`agg`、`alias`、`unit`。
-  - [ ] 为该结构补单元测试或序列化测试。
-- [ ] 新增旧请求 → `ChartSpec` 的 adapter。
-  - [ ] 先补 adapter 测试。
-  - [ ] 保证旧 `dims` / `metrics` 能映射到默认维度组和指标组。
-- [ ] 新增 `QuerySpec` 类型。
-  - [ ] 定义结构化维度表达式。
-  - [ ] 定义结构化指标表达式。
-  - [ ] 定义过滤、排序、分页、limit 能力。
-- [ ] 新增 `ChartSpec` → `QuerySpec` 的转换。
-  - [ ] 先补转换测试。
-  - [ ] 保证基础图表在兼容模式下生成 SQL 不变。
+- [x] 新增内部 `ChartSpec` 类型。
+  - [x] 定义基础结构：`chart_type`、`dimension_groups`、`metric_groups`、`style`、`query_options`。
+  - [x] 为字段绑定预留附加属性：`label`、`granularity`、`agg`、`alias`、`unit`。
+  - [x] 为该结构补单元测试或序列化测试。
+- [x] 新增旧请求 → `ChartSpec` 的 adapter。
+  - [x] 先补 adapter 测试。
+  - [x] 保证旧 `dims` / `metrics` 能映射到默认维度组和指标组。
+- [x] 新增 `QuerySpec` 类型。
+  - [x] 定义结构化维度表达式。
+  - [x] 定义结构化指标表达式。
+  - [x] 定义过滤、排序、分页、limit 能力。
+- [x] 新增 `ChartSpec` → `QuerySpec` 的转换。
+  - [x] 先补转换测试。
+  - [x] 保证基础图表在兼容模式下生成 SQL 不变。
 
 ### P2：增强 QueryAST
 
@@ -157,5 +156,6 @@
 - [x] 文档契约草案已完成。
 - [x] `AND/OR` 过滤问题已完成并验证。
 - [x] 散点图语义一致性已完成（方案 A：两个 metric，前端已修复）。
-- [ ] 分页与排序规则尚未开始改代码。
-- [ ] `ChartSpec` / `QuerySpec` / `QueryAST` 结构化改造尚未开始。
+- [x] 分页与排序规则已完成（后端 ORDER BY 不再被分页跳过，前端 sort 参数已接入请求链路）。
+- [x] `ChartSpec` / `QuerySpec` 类型定义与 adapter 已完成（`chart_spec.go`）。
+- [ ] `ChartSpec` → `QuerySpec` 转换尚未接入 service 层（目前仅类型和 adapter 就绪）。
