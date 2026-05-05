@@ -20,6 +20,26 @@ import {
   TableResponse,
 } from '../api';
 
+/**
+ * 按索引补齐字段组数组，避免直接按下标赋值时产生稀疏数组。
+ * 调用场景：散点图/透视表会把字段直接写入第 2 个组，若第 1 个组缺失会出现 empty slot。
+ * 主要逻辑：复制数组后补足到目标索引，每个缺失位置都写入空字段组。
+ */
+const ensureFieldGroupAtIndex = (
+  groups: FieldGroup[],
+  groupIndex: number,
+  prefix: 'dim-group' | 'metric-group'
+): FieldGroup[] => {
+  const nextGroups = [...groups];
+  while (nextGroups.length <= groupIndex) {
+    nextGroups.push({
+      id: `${prefix}-${nextGroups.length + 1}`,
+      fields: [],
+    });
+  }
+  return nextGroups;
+};
+
 // Field types for chart builder
 export type FieldType = 'dimension' | 'metric';
 
@@ -558,15 +578,19 @@ export const useStore = create<AppState>((set) => ({
 
   addDimensionField: (field: ChartField, groupIndex = 0) => {
     set((state) => {
-      const existingFields = state.queryConfig.dimensionGroups[groupIndex]?.fields || [];
+      const dimensionGroups = ensureFieldGroupAtIndex(
+        state.queryConfig.dimensionGroups,
+        groupIndex,
+        'dim-group'
+      );
+      const existingFields = dimensionGroups[groupIndex]?.fields || [];
       if (existingFields.includes(field.id)) return state;
 
       const newGroup = {
-        id: state.queryConfig.dimensionGroups[groupIndex]?.id || `dim-group-${groupIndex + 1}`,
+        id: dimensionGroups[groupIndex]?.id || `dim-group-${groupIndex + 1}`,
         fields: [...existingFields, field.id],
       };
 
-      const dimensionGroups = [...state.queryConfig.dimensionGroups];
       dimensionGroups[groupIndex] = newGroup;
 
       return {
@@ -613,15 +637,19 @@ export const useStore = create<AppState>((set) => ({
 
   addMetricField: (field: ChartField, groupIndex = 0) => {
     set((state) => {
-      const existingFields = state.queryConfig.metricGroups[groupIndex]?.fields || [];
+      const metricGroups = ensureFieldGroupAtIndex(
+        state.queryConfig.metricGroups,
+        groupIndex,
+        'metric-group'
+      );
+      const existingFields = metricGroups[groupIndex]?.fields || [];
       if (existingFields.includes(field.id)) return state;
 
       const newGroup = {
-        id: state.queryConfig.metricGroups[groupIndex]?.id || `metric-group-${groupIndex + 1}`,
+        id: metricGroups[groupIndex]?.id || `metric-group-${groupIndex + 1}`,
         fields: [...existingFields, field.id],
       };
 
-      const metricGroups = [...state.queryConfig.metricGroups];
       metricGroups[groupIndex] = newGroup;
 
       return {

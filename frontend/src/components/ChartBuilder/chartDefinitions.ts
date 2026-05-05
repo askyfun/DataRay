@@ -167,12 +167,28 @@ export const chartDefinitions: Record<BuilderChartType, ChartDefinition> = {
   },
 };
 
+const normalizeGroups = <T extends QueryConfig['dimensionGroups'] | QueryConfig['metricGroups']>(
+  groups: T,
+  prefix: 'dim-group' | 'metric-group'
+): T => {
+  return groups.map((group, index) => {
+    if (group && Array.isArray(group.fields)) {
+      return group;
+    }
+
+    return {
+      id: `${prefix}-${index + 1}`,
+      fields: [],
+    };
+  }) as T;
+};
+
 const ensureGroupCount = (
   groups: QueryConfig['dimensionGroups'] | QueryConfig['metricGroups'],
   requiredCount: number,
   prefix: 'dim-group' | 'metric-group'
 ) => {
-  const nextGroups = [...groups];
+  const nextGroups = [...normalizeGroups(groups, prefix)];
   while (nextGroups.length < requiredCount) {
     nextGroups.push({
       id: `${prefix}-${nextGroups.length + 1}`,

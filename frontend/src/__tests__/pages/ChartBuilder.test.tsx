@@ -24,7 +24,7 @@ vi.mock('../../components/ChartBuilder/FilterBuilder', () => ({
 }));
 
 vi.mock('../../components/ChartBuilder/QueryConfigRow', () => ({
-  default: () => <div data-testid="query-config-row" />,
+  default: ({ label }: { label: string }) => <div data-testid="query-config-row">{label}</div>,
 }));
 
 vi.mock('../../api', async (importOriginal) => {
@@ -82,6 +82,16 @@ const resetChartBuilderState = () => {
 const renderChartBuilder = () => {
   return render(
     <MemoryRouter initialEntries={['/chart-builder?edit=1&datasetId=1']}>
+      <Routes>
+        <Route path="/chart-builder" element={<ChartBuilder />} />
+      </Routes>
+    </MemoryRouter>
+  );
+};
+
+const renderNewChartBuilder = () => {
+  return render(
+    <MemoryRouter initialEntries={['/chart-builder?datasetId=1']}>
       <Routes>
         <Route path="/chart-builder" element={<ChartBuilder />} />
       </Routes>
@@ -210,24 +220,24 @@ describe('ChartBuilder', () => {
   });
 
   it('switches query group labels based on chart definition', async () => {
-    renderChartBuilder();
+    renderNewChartBuilder();
 
     await waitFor(() => {
-      expect(mockExecuteChartQuery).toHaveBeenCalledTimes(1);
+      expect(screen.getAllByTestId('query-config-row').length).toBeGreaterThan(0);
     });
 
     expect(screen.getByText('维度')).toBeInTheDocument();
     expect(screen.getByText('指标')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '饼图' }));
+    fireEvent.click(screen.getByRole('button', { name: /饼图$/ }));
     expect(screen.getByText('分类')).toBeInTheDocument();
     expect(screen.getByText('数值')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '散点图' }));
+    fireEvent.click(screen.getByRole('button', { name: /散点图$/ }));
     expect(screen.getByText('X 轴指标')).toBeInTheDocument();
     expect(screen.getByText('Y 轴指标')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '透视表' }));
+    fireEvent.click(screen.getByRole('button', { name: /透视表$/ }));
     expect(screen.getByText('行维度')).toBeInTheDocument();
     expect(screen.getByText('列维度')).toBeInTheDocument();
     expect(screen.getByText('值指标')).toBeInTheDocument();
@@ -332,23 +342,32 @@ describe('ChartBuilder', () => {
   it('does not emit duplicate key warnings when the same field appears in multiple groups', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    useStore.setState({
-      chartBuilderConfig: {
-        chartType: 'pivot',
-        xAxisField: null,
-        yAxisFields: [],
-        title: 'Pivot Chart',
-      },
-      queryConfig: {
-        dimensionGroups: [
-          { id: 'dim-group-rows', fields: ['field-0'] },
-          { id: 'dim-group-columns', fields: ['field-0'] },
-        ],
-        metricGroups: [],
-        filters: [],
-        limit: 1000,
-      },
-    });
+    mockGetChartById.mockResolvedValueOnce(
+      mockAxiosResponse({
+        code: 20000,
+        msg: 'ok',
+        trace: '',
+        data: {
+          id: 1,
+          name: 'Pivot Chart',
+          dataset_id: 1,
+          chart_type: 'pivot',
+          config: JSON.stringify({
+            chartType: 'pivot',
+            title: 'Pivot Chart',
+            queryConfig: {
+              dimensionGroups: [
+                { id: 'dim-group-rows', fields: ['field-0'] },
+                { id: 'dim-group-columns', fields: ['field-0'] },
+              ],
+              metricGroups: [],
+              filters: [],
+              limit: 1000,
+            },
+          }),
+        },
+      })
+    );
 
     renderChartBuilder();
 
@@ -368,23 +387,32 @@ describe('ChartBuilder', () => {
   });
 
   it('limits pie query metrics to the visible chart definition groups', async () => {
-    useStore.setState({
-      chartBuilderConfig: {
-        chartType: 'pie',
-        xAxisField: null,
-        yAxisFields: [],
-        title: 'Pie Chart',
-      },
-      queryConfig: {
-        dimensionGroups: [{ id: 'dim-group-main', fields: ['field-0'] }],
-        metricGroups: [
-          { id: 'metric-group-main', fields: ['field-1'] },
-          { id: 'metric-group-extra', fields: ['field-1'] },
-        ],
-        filters: [],
-        limit: 1000,
-      },
-    });
+    mockGetChartById.mockResolvedValueOnce(
+      mockAxiosResponse({
+        code: 20000,
+        msg: 'ok',
+        trace: '',
+        data: {
+          id: 1,
+          name: 'Pie Chart',
+          dataset_id: 1,
+          chart_type: 'pie',
+          config: JSON.stringify({
+            chartType: 'pie',
+            title: 'Pie Chart',
+            queryConfig: {
+              dimensionGroups: [{ id: 'dim-group-main', fields: ['field-0'] }],
+              metricGroups: [
+                { id: 'metric-group-main', fields: ['field-1'] },
+                { id: 'metric-group-extra', fields: ['field-1'] },
+              ],
+              filters: [],
+              limit: 1000,
+            },
+          }),
+        },
+      })
+    );
 
     renderChartBuilder();
 
@@ -399,5 +427,47 @@ describe('ChartBuilder', () => {
         metrics: [{ field: 'revenue', agg: 'sum', alias: 'revenue' }],
       })
     );
+  });
+
+  it('loads sparse saved metric groups without crashing and normalizes them for scatter charts', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    mockGetChartById.mockResolvedValueOnce(
+      mockAxiosResponse({
+        code: 20000,
+        msg: 'ok',
+        trace: '',
+        data: {
+          id: 1,
+          name: 'Scatter Chart',
+          dataset_id: 1,
+          chart_type: 'scatter',
+          config: JSON.stringify({
+            chartType: 'scatter',
+            title: 'Scatter Chart',
+            queryConfig: {
+              dimensionGroups: [],
+              metricGroups: [null, { id: 'metric-group-secondary', fields: ['field-1'] }],
+              filters: [],
+              limit: 1000,
+            },
+          }),
+        },
+      })
+    );
+
+    renderChartBuilder();
+
+    await waitFor(() => {
+      expect(useStore.getState().chartBuilderConfig.chartType).toBe('scatter');
+    });
+
+    expect(useStore.getState().queryConfig.metricGroups).toEqual([
+      { id: 'metric-group-1', fields: [] },
+      { id: 'metric-group-secondary', fields: ['field-1'] },
+    ]);
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    errorSpy.mockRestore();
   });
 });

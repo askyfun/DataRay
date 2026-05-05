@@ -117,4 +117,20 @@ describe('reorderDimensionField', () => {
     expect(useStore.getState().queryConfig.metricGroups[0].fields).toEqual(['metric-0']);
     expect(useStore.getState().queryConfig.metricGroups[1].fields).toEqual(['metric-1']);
   });
+
+  it('addMetricField 写入第 2 个指标组时会自动补齐前置空组，避免稀疏数组', () => {
+    useStore.setState({
+      chartBuilderFields: [{ id: 'metric-0', name: 'revenue', type: 'metric', dataType: 'float' }],
+    });
+
+    const { addMetricField } = useStore.getState();
+    const field = useStore.getState().chartBuilderFields[0];
+
+    addMetricField(field, 1);
+
+    expect(useStore.getState().queryConfig.metricGroups).toEqual([
+      { id: 'metric-group-1', fields: [] },
+      { id: 'metric-group-2', fields: ['metric-0'] },
+    ]);
+  });
 });

@@ -52,7 +52,14 @@ import DraggableField, { FieldDragPreview } from '../components/ChartBuilder/Dra
 import FilterBuilder from '../components/ChartBuilder/FilterBuilder';
 import QueryConfigRow from '../components/ChartBuilder/QueryConfigRow';
 import TableChart from '../components/ChartBuilder/TableChart';
-import { ChartConfig, ChartField, ChartQueryOptions, ChartStyleConfig, useStore } from '../store';
+import {
+  ChartConfig,
+  ChartField,
+  ChartQueryOptions,
+  ChartStyleConfig,
+  QueryConfig,
+  useStore,
+} from '../store';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -1143,7 +1150,9 @@ const ChartBuilder: React.FC = () => {
             });
 
             if (config.queryConfig) {
-              setQueryConfig(config.queryConfig);
+              setQueryConfig(
+                normalizeQueryConfigForChartType(config.chartType || 'table', config.queryConfig)
+              );
             }
 
             if (config.metricAliases) {
