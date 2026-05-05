@@ -32,6 +32,62 @@
 - [ ] 统一前后端响应结构和文档，支持未来复杂图表扩展。
 - [ ] 所有代码改造继续使用 TDD：先写失败测试，再实现，再回归验证。
 
+## 下一步执行计划（本轮）
+
+本轮目标：不继续扩散新能力，先把已经定义好的 `ChartSpec / QuerySpec` 真正接入后端执行链路，并为后续 `QueryPlanner` 留出稳定落点。
+
+### Step 1：补齐 service 层接入测试，锁定兼容目标
+
+- [x] 先为 `backend/internal/service/chart` 补失败测试，覆盖 `ChartQueryRequest -> QuerySpec -> SQL/响应` 的真实链路。
+- [x] 至少覆盖表格、折线图、散点图三类基础图表，确保兼容现有 `dims / metrics / filters / sort / pagination`。
+- [x] 明确成功标准：接入新链路后，现有接口响应 shape 不变、SQL 行为不回退。
+
+验证：运行 `go test ./internal/service/chart ./internal/query`，并确认新增测试在改代码前失败、改后通过。
+
+### Step 2：将 QuerySpec adapter 接入 chart service 主路径
+
+- [x] 在 `backend/internal/service/chart/impl.go` 中收敛旧的平铺参数组装逻辑，统一改为先生成 `QuerySpec`，再走兼容 adapter 下沉到 builder。
+- [x] 保持 handler / IDL / 前端请求结构不变，不在本轮引入新的外部 API 字段。
+- [x] 清理本次改动引入的重复转换逻辑，避免 service 层同时维护两套语义入口。
+
+验证：运行 `go test ./internal/service/chart ./internal/query`，并抽查生成 SQL 与当前契约一致。
+
+### Step 3：补一个最小 QueryPlanner 雏形，而不是直接做完整 AST 升级
+
+- [x] 新增最小 `QueryPlanner` 入口，职责仅限 `QuerySpec -> 旧 builder 入参` 或 `QueryAST` 的兼容规划。
+- [x] 当前只支持已有能力：基础维度、基础聚合、线性 filters、sort、pagination。
+- [x] 暂不实现时间粒度、分桶、过滤组嵌套，只为后续 P2 留清晰扩展点。
+
+验证：为 planner 补单元测试，确保输出与 `QuerySpecToBuildArgs` 当前行为等价。
+
+### Step 4：同步文档，更新“已完成/下一步”状态
+
+- [x] 更新 `docs/architecture.md`，明确 service 层已从“直接平铺请求”切到“先 QuerySpec 再规划”。
+- [x] 更新 `docs/api.md` / `docs/api-spec.md`，说明当前仍是兼容期，对外请求结构未变。
+- [x] 回写 `plan.md` 当前状态，标记本轮完成项和下一轮入口。
+
+验证：人工检查文档描述与代码入口一致，不出现“文档说已接入、代码还没接”的失配。
+
+## 本轮边界
+
+- [ ] 不修改前端请求协议。
+- [ ] 不落地统一响应 Envelope。
+- [ ] 不实现时间粒度、分桶、复杂过滤组。
+- [ ] 不顺手重构 processor / handler 无关代码。
+
+## 本轮主要风险
+
+- [ ] `chart service` 里可能已有隐式依赖旧参数顺序，接入 `QuerySpec` 后若测试覆盖不足，容易出现图表类型回归。
+- [ ] `sort` 既支持原字段也支持聚合别名，若 planner/adapter 处理不一致，可能再次引入排序错误。
+- [ ] 散点图语义已特殊约定为“两个 metric”，接入新链路时要防止被通用维度/指标映射误伤。
+
+## 本轮完成标准
+
+- [x] `ChartSpec / QuerySpec` 不再只是类型定义和测试样例，而是真正进入 chart 查询主路径。
+- [x] 基础图表查询链路保持兼容，无新增外部接口破坏。
+- [x] 新增测试能覆盖 service 入口和 planner 兼容层。
+- [x] 文档与 `plan.md` 状态同步完成。
+
 ## 下一次开工优先顺序
 
 ### P0：继续修当前确定问题
@@ -98,8 +154,9 @@
   - [ ] 空值过滤。
   - [ ] 字段类型感知。
 - [ ] 引入 `QueryPlanner`。
-  - [ ] 定义 `QuerySpec -> QueryAST` 规划流程。
-  - [ ] 为基础图表补规划测试。
+  - [x] 定义最小 `QuerySpec -> 兼容旧执行链路入参` 规划流程。
+  - [x] 为基础图表补规划测试。
+  - [ ] 后续升级为完整 `QuerySpec -> QueryAST` 规划流程。
 
 ### P3：前端 ChartBuilder 升级
 
@@ -158,4 +215,7 @@
 - [x] 散点图语义一致性已完成（方案 A：两个 metric，前端已修复）。
 - [x] 分页与排序规则已完成（后端 ORDER BY 不再被分页跳过，前端 sort 参数已接入请求链路）。
 - [x] `ChartSpec` / `QuerySpec` 类型定义与 adapter 已完成（`chart_spec.go`）。
-- [ ] `ChartSpec` → `QuerySpec` 转换尚未接入 service 层（目前仅类型和 adapter 就绪）。
+- [x] `ChartSpec` → `QuerySpec` 已接入 `chartService.Query` 主路径。
+- [x] 最小 `QueryPlanner` 已落地，并已接入 `QuerySpec -> 旧 executor 请求` 的兼容规划链路。
+- [x] service 层兼容测试已覆盖 table / line / scatter 主链路。
+- [ ] 下一轮优先把 `QueryPlanner` 从“兼容旧执行链路入参”继续升级为“完整 `QuerySpec -> QueryAST` 规划器”，再推进时间粒度、分桶、复杂过滤组能力。

@@ -130,7 +130,7 @@ func TestChartSpec_Serialization(t *testing.T) {
 				},
 			},
 		},
-		Style: map[string]any{"color": "#1890ff"},
+		Style:        map[string]any{"color": "#1890ff"},
 		QueryOptions: map[string]any{"limit": 100},
 	}
 
@@ -242,5 +242,64 @@ func TestQuerySpecFromRequest_Basic(t *testing.T) {
 	}
 	if spec.Pagination == nil || spec.Pagination.Page != 2 {
 		t.Errorf("Expected pagination page 2, got %v", spec.Pagination)
+	}
+}
+
+func TestQueryPlanner_PlanMatchesAdapter(t *testing.T) {
+	spec := &QuerySpec{
+		Dimensions: []DimensionExpr{
+			{Field: "status"},
+			{Field: "city"},
+		},
+		Metrics: []MetricExpr2{
+			{Field: "amount", Agg: AggSum, Alias: "total_amount"},
+			{Field: "id", Agg: AggCount, Alias: "count"},
+		},
+		Filters: []FilterConfig{
+			{Field: "status", Op: FilterEq, Value: "active"},
+			{Field: "amount", Op: FilterGt, Value: 100, Logic: "and"},
+		},
+		Sort:       &SortConfig{Field: "total_amount", Order: "desc"},
+		Pagination: &Pagination{Page: 2, PageSize: 20},
+		Limit:      100,
+	}
+
+	expectedDims, expectedMetrics, expectedFilters := QuerySpecToBuildArgs(spec)
+	planned := NewQueryPlanner().Plan(spec)
+
+	if planned == nil {
+		t.Fatal("expected planned query, got nil")
+	}
+	if len(planned.Dims) != len(expectedDims) || planned.Dims[0] != expectedDims[0] || planned.Dims[1] != expectedDims[1] {
+		t.Fatalf("expected dims %v, got %v", expectedDims, planned.Dims)
+	}
+	if len(planned.Metrics) != len(expectedMetrics) || planned.Metrics[0].Alias != expectedMetrics[0].Alias || planned.Metrics[1].Field != expectedMetrics[1].Field {
+		t.Fatalf("expected metrics %v, got %v", expectedMetrics, planned.Metrics)
+	}
+	if len(planned.Filters) != len(expectedFilters) || planned.Filters[0].Field != expectedFilters[0].Field || planned.Filters[1].Logic != expectedFilters[1].Logic {
+		t.Fatalf("expected filters %v, got %v", expectedFilters, planned.Filters)
+	}
+	if planned.Sort == nil || planned.Sort.Field != "total_amount" || planned.Sort.Order != "desc" {
+		t.Fatalf("expected sort total_amount desc, got %v", planned.Sort)
+	}
+	if planned.Pagination == nil || planned.Pagination.Page != 2 || planned.Pagination.PageSize != 20 {
+		t.Fatalf("expected pagination {2,20}, got %v", planned.Pagination)
+	}
+	if planned.Limit != 100 {
+		t.Fatalf("expected limit 100, got %d", planned.Limit)
+	}
+}
+
+func TestQueryPlanner_PlanNilSpec(t *testing.T) {
+	planned := NewQueryPlanner().Plan(nil)
+
+	if planned == nil {
+		t.Fatal("expected planned query, got nil")
+	}
+	if len(planned.Dims) != 0 || len(planned.Metrics) != 0 || len(planned.Filters) != 0 {
+		t.Fatalf("expected empty planned query, got %+v", planned)
+	}
+	if planned.Sort != nil || planned.Pagination != nil || planned.Limit != 0 {
+		t.Fatalf("expected nil sort/pagination and zero limit, got %+v", planned)
 	}
 }

@@ -90,6 +90,13 @@ Monorepo 结构，包含前端 (React/TypeScript) 和后端 (Go)。核心功能�
 - `QueryPlanner`：将 QuerySpec 转换为 QueryAST
 - `QueryAST`：数据库无关的查询中间表示
 
+当前落地状态：
+
+- 对外接口仍使用旧协议：`chart_type` + `dims` + `metrics` + `filters` + `pagination` + `sort`。
+- `backend/internal/service/chart/impl.go` 已先将旧请求转换为内部 `QuerySpec`。
+- `QueryPlanner` 已作为最小兼容规划层接入，当前先将 `QuerySpec` 规划为旧 executor / builder 仍可消费的平铺参数。
+- `QueryPlanner` 还未完整产出 `QueryAST`，时间粒度、分桶、复杂过滤组等能力仍属于后续阶段。
+
 ### 响应层
 
 负责将查询结果包装成统一响应 Envelope：

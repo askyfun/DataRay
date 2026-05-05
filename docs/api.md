@@ -1053,6 +1053,7 @@ POST /api/charts/query
 **兼容协议说明**:
 
 - 当前实现仍以 `dims` / `metrics` / `filters` / `pagination` / `sort` 为主。
+- 服务端内部已接入兼容转换链路：`旧请求 -> QuerySpec -> QueryPlanner -> 旧 executor 请求`。
 - 后续演进目标是在保持当前协议兼容的前提下，引入结构化 `chart_spec`。
 - 兼容期内建议前端优先遵循本节旧协议；新协议文档以“草案”形式定义在下文。
 

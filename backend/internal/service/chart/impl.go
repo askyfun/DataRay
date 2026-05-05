@@ -29,12 +29,30 @@ type Service interface {
 
 // chartService implements the Service interface
 type chartService struct {
-	db *bun.DB
+	db                   *bun.DB
+	connectFn            func(ctx context.Context, ds *model.Datasource) (datasource.Connection, error)
+	executorFactory      func(conn datasource.Connection, dataset *model.Dataset, ds *model.Datasource) queryExecutor
+	getDatasetModelFn    func(ctx context.Context, id int) (*model.Dataset, error)
+	getDatasourceModelFn func(ctx context.Context, id int) (*model.Datasource, error)
+}
+
+// queryExecutor 抽象 query.Executor，便于 service 层注入测试替身。
+// 调用场景：chartService.Query 在拿到 dataset/datasource/connection 后，通过该接口执行图表查询。
+type queryExecutor interface {
+	// Execute 执行图表查询并返回图表数据和生成 SQL。
+	Execute(ctx context.Context, req *query.ChartQueryRequest) (query.ExecutorResult, error)
 }
 
 // NewService creates a new chart service
 func NewService(db *bun.DB) Service {
-	return &chartService{db: db}
+	service := &chartService{db: db}
+	service.connectFn = service.connect
+	service.executorFactory = func(conn datasource.Connection, dataset *model.Dataset, ds *model.Datasource) queryExecutor {
+		return query.NewExecutor(conn, dataset, ds)
+	}
+	service.getDatasetModelFn = service.getDatasetModel
+	service.getDatasourceModelFn = service.getDatasourceModel
+	return service
 }
 
 // List returns all charts with pagination
@@ -132,32 +150,34 @@ func (s *chartService) GetData(ctx context.Context, id int) (entity.ChartDataRes
 
 // Query executes a chart query
 func (s *chartService) Query(ctx context.Context, req *entity.ChartQueryRequest) (entity.ChartDataResult, error) {
-	dataset, err := s.getDatasetModel(ctx, req.DatasetID)
+	dataset, err := s.getDatasetModelFn(ctx, req.DatasetID)
 	if err != nil {
 		return entity.ChartDataResult{}, err
 	}
 
-	dsModel, err := s.getDatasourceModel(ctx, dataset.DatasourceID)
+	dsModel, err := s.getDatasourceModelFn(ctx, dataset.DatasourceID)
 	if err != nil {
 		return entity.ChartDataResult{}, err
 	}
 
-	conn, err := s.connect(ctx, dsModel)
+	conn, err := s.connectFn(ctx, dsModel)
 	if err != nil {
 		return entity.ChartDataResult{}, err
 	}
 	defer conn.Close()
 
-	executor := query.NewExecutor(conn, dataset, dsModel)
+	executor := s.executorFactory(conn, dataset, dsModel)
+	querySpec := buildQuerySpecFromEntityRequest(req)
+	plannedQuery := query.NewQueryPlanner().Plan(querySpec)
 
 	queryReq := &query.ChartQueryRequest{
-		DatasetID: req.DatasetID,
-		ChartType: query.ChartType(req.ChartType),
-		Dims:      req.Dims,
-		Metrics:   convertMetrics(req.Metrics),
-		Filters:   convertFilters(req.Filters),
-		Pagination: convertPagination(req.Pagination),
-		Sort:      convertSort(req.Sort),
+		DatasetID:  req.DatasetID,
+		ChartType:  query.ChartType(req.ChartType),
+		Dims:       plannedQuery.Dims,
+		Metrics:    plannedQuery.Metrics,
+		Filters:    plannedQuery.Filters,
+		Pagination: plannedQuery.Pagination,
+		Sort:       plannedQuery.Sort,
 	}
 
 	result, err := executor.Execute(ctx, queryReq)
@@ -170,6 +190,22 @@ func (s *chartService) Query(ctx context.Context, req *entity.ChartQueryRequest)
 		SelectSQL: result.Select,
 		CountSQL:  result.Count,
 	}, nil
+}
+
+// buildQuerySpecFromEntityRequest 将 service 层 entity 请求转换为 QuerySpec。
+// 调用场景：chart 查询主链路统一先进入 Query 语义层，再通过兼容 adapter 下沉到旧 executor。
+func buildQuerySpecFromEntityRequest(req *entity.ChartQueryRequest) *query.QuerySpec {
+	queryReq := &query.ChartQueryRequest{
+		DatasetID:  req.DatasetID,
+		ChartType:  query.ChartType(req.ChartType),
+		Dims:       req.Dims,
+		Metrics:    convertMetrics(req.Metrics),
+		Filters:    convertFilters(req.Filters),
+		Pagination: convertPagination(req.Pagination),
+		Sort:       convertSort(req.Sort),
+	}
+
+	return query.QuerySpecFromRequest(queryReq)
 }
 
 // Helper functions
