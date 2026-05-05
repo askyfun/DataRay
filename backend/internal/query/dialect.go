@@ -108,7 +108,7 @@ func (b *baseSQLBuilder) buildGroupByClause(ast *QueryAST) string {
 }
 
 func (b *baseSQLBuilder) buildOrderByClause(ast *QueryAST) string {
-	if ast.Sort == nil || ast.Pagination != nil {
+	if ast.Sort == nil {
 		return ""
 	}
 	return fmt.Sprintf("ORDER BY %s %s", ast.Sort.FieldExpr, ast.Sort.Order)

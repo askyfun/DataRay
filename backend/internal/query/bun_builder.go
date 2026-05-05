@@ -148,7 +148,7 @@ func (qb *BunQueryBuilder) BuildSelectQuery(ast *QueryAST) (string, []interface{
 	}
 
 	// ORDER BY 子句
-	if ast.Sort != nil && ast.Pagination == nil {
+	if ast.Sort != nil {
 		sb.WriteString(" ORDER BY ")
 		sb.WriteString(safeIdentifier(ast.Sort.FieldExpr))
 		sb.WriteString(" ")

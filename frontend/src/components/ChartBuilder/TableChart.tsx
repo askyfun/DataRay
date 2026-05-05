@@ -1,14 +1,12 @@
 import type { TableProps } from 'antd';
 import { Empty, Spin, Table, Typography } from 'antd';
 import { useMemo } from 'react';
-import type { QueryConfig } from '../../store';
 
 const { Text } = Typography;
 
 interface TableChartProps {
   data: any[];
   loading: boolean;
-  queryConfig?: QueryConfig;
   columns?: string[];
   /** 维度字段名列表，按用户拖入顺序 */
   dimensionNames?: string[];
@@ -20,17 +18,18 @@ interface TableChartProps {
     total: number;
   };
   onPageChange?: (page: number, pageSize: number) => void;
+  onSortChange?: (sort: { field: string; order: 'asc' | 'desc' }) => void;
 }
 
 const TableChart: React.FC<TableChartProps> = ({
   data,
   loading,
-  queryConfig,
   columns: propColumns,
   dimensionNames,
   metricNames,
   pagination,
   onPageChange,
+  onSortChange,
 }) => {
   const columns: TableProps<any>['columns'] = useMemo(() => {
     const keys =
@@ -83,13 +82,13 @@ const TableChart: React.FC<TableChartProps> = ({
       onPageChange(tablePagination.current || 1, tablePagination.pageSize || 10);
     }
 
-    if (queryConfig && sorter && !Array.isArray(sorter)) {
+    if (onSortChange && sorter && !Array.isArray(sorter)) {
       const sortField = sorter.field as string | undefined;
       const sortOrder =
         sorter.order === 'ascend' ? 'asc' : sorter.order === 'descend' ? 'desc' : undefined;
 
       if (sortField && sortOrder) {
-        queryConfig.sort = { field: sortField, order: sortOrder };
+        onSortChange({ field: sortField, order: sortOrder });
       }
     }
   };

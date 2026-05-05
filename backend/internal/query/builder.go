@@ -107,8 +107,8 @@ func (b *Builder) Build() string {
 		sb.WriteString(groupByClause)
 	}
 
-	// ORDER BY 子句 (仅用于非分页查询)
-	if b.sort != nil && b.pagination == nil {
+	// ORDER BY 子句
+	if b.sort != nil {
 		sb.WriteString(" ORDER BY ")
 		sb.WriteString(b.sort.Field)
 		sb.WriteString(" ")

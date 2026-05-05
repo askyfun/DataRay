@@ -581,6 +581,9 @@ const ChartBuilder: React.FC = () => {
       dims,
       metrics,
       filters,
+      sort: queryConfig.sort
+        ? { field: queryConfig.sort.field, order: queryConfig.sort.order }
+        : undefined,
       pagination:
         chartBuilderConfig.chartType === 'table'
           ? {
@@ -596,6 +599,7 @@ const ChartBuilder: React.FC = () => {
     metricAggregations,
     metricAliases,
     queryConfig.filters,
+    queryConfig.sort,
     chartBuilderConfig.chartType,
     tablePagination.page,
     tablePagination.pageSize,
@@ -619,6 +623,18 @@ const ChartBuilder: React.FC = () => {
       }
     },
     [buildChartQueryRequest, executeChartQuery, setTablePagination, tablePagination]
+  );
+
+  const handleSortChange = useCallback(
+    (sort: { field: string; order: 'asc' | 'desc' }) => {
+      setQueryConfig({ sort });
+      const request = buildChartQueryRequest();
+      if (request) {
+        request.sort = sort;
+        executeChartQuery(request);
+      }
+    },
+    [buildChartQueryRequest, executeChartQuery, setQueryConfig]
   );
 
   useEffect(() => {
@@ -844,12 +860,12 @@ const ChartBuilder: React.FC = () => {
         <TableChart
           data={chartData}
           loading={chartDataLoading}
-          queryConfig={queryConfig}
           columns={tableColumns}
           dimensionNames={dimensionFields.map((f) => f.name)}
           metricNames={metricFields.map((f) => f.name)}
           pagination={chartBuilderConfig.chartType === 'table' ? tablePagination : undefined}
           onPageChange={chartBuilderConfig.chartType === 'table' ? handlePageChange : undefined}
+          onSortChange={chartBuilderConfig.chartType === 'table' ? handleSortChange : undefined}
         />
       );
     }

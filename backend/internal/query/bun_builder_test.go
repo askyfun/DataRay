@@ -179,6 +179,54 @@ func TestBunQueryBuilder_WithSort(t *testing.T) {
 	}
 }
 
+func TestBunQueryBuilder_SortWithPagination(t *testing.T) {
+	qb := NewBunQueryBuilder()
+
+	ast := qb.Build(
+		"orders",
+		SourceTypeTable,
+		[]string{"status"},
+		[]MetricConfig{{Field: "amount", Agg: AggSum, Alias: "total_amount"}},
+		[]FilterConfig{},
+		&SortConfig{Field: "total_amount", Order: "desc"},
+		&Pagination{Page: 2, PageSize: 20},
+	)
+
+	sql, _ := qb.BuildSelectQuery(ast)
+
+	t.Logf("Generated SQL: %s", sql)
+
+	// 分页查询必须保留 ORDER BY，否则分页结果不确定
+	expected := "SELECT status, SUM(amount) AS total_amount FROM orders GROUP BY status ORDER BY total_amount desc LIMIT 20 OFFSET 20"
+	if sql != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, sql)
+	}
+}
+
+func TestBunQueryBuilder_PaginationWithoutSort(t *testing.T) {
+	qb := NewBunQueryBuilder()
+
+	ast := qb.Build(
+		"orders",
+		SourceTypeTable,
+		[]string{"status"},
+		[]MetricConfig{{Field: "id", Agg: AggCount, Alias: "count"}},
+		[]FilterConfig{},
+		nil,
+		&Pagination{Page: 1, PageSize: 10},
+	)
+
+	sql, _ := qb.BuildSelectQuery(ast)
+
+	t.Logf("Generated SQL: %s", sql)
+
+	// 无 sort 时不加 ORDER BY，结果顺序由数据库决定
+	expected := "SELECT status, COUNT(id) AS count FROM orders GROUP BY status LIMIT 10 OFFSET 0"
+	if sql != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, sql)
+	}
+}
+
 func TestBunQueryBuilder_CountQuery(t *testing.T) {
 	qb := NewBunQueryBuilder()
 
