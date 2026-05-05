@@ -72,6 +72,8 @@ export interface Dataset {
   preview_data?: string;
   quality_rules?: string;
   columns: string;
+  shard_enabled: boolean;
+  shard_keys: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -85,6 +87,8 @@ export interface DatasetFormData {
   mode?: DatasetMode;
   description?: string;
   tags?: string[];
+  shard_enabled?: boolean;
+  shard_keys?: string[];
 }
 
 export interface Chart {

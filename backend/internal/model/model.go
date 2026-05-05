@@ -43,6 +43,8 @@ func CreateTables(ctx context.Context, db *bun.DB) error {
 			preview_data JSONB,
 			quality_rules JSONB DEFAULT '[]',
 			columns JSONB DEFAULT '[]',
+			shard_enabled BOOLEAN DEFAULT FALSE,
+			shard_keys JSONB DEFAULT '[]',
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
@@ -87,6 +89,14 @@ func CreateTables(ctx context.Context, db *bun.DB) error {
 			expires_at TIMESTAMP,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
+	`); err != nil {
+		return err
+	}
+
+	// Migrate: add shard columns if missing
+	if _, err := db.ExecContext(ctx, `
+		ALTER TABLE bi_dataset ADD COLUMN IF NOT EXISTS shard_enabled BOOLEAN DEFAULT FALSE;
+		ALTER TABLE bi_dataset ADD COLUMN IF NOT EXISTS shard_keys JSONB DEFAULT '[]';
 	`); err != nil {
 		return err
 	}
@@ -145,6 +155,8 @@ type Dataset struct {
 	PreviewData      sql.NullString `bun:"preview_data" json:"preview_data"`
 	QualityRules     string         `bun:"quality_rules" json:"quality_rules"`
 	Columns          string         `bun:"columns" json:"columns"`
+	ShardEnabled     bool           `bun:"shard_enabled" json:"shard_enabled"`
+	ShardKeys        string         `bun:"shard_keys" json:"shard_keys"`
 	CreatedAt        sql.NullTime   `bun:"created_at" json:"created_at"`
 	UpdatedAt        sql.NullTime   `bun:"updated_at" json:"updated_at"`
 }

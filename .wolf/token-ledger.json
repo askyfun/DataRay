@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "created_at": "2026-05-05T10:39:32.666Z",
+  "lifetime": {
+    "total_tokens_estimated": 5386,
+    "total_reads": 2,
+    "total_writes": 3,
+    "total_sessions": 3,
+    "anatomy_hits": 2,
+    "anatomy_misses": 0,
+    "repeated_reads_blocked": 4,
+    "estimated_savings_vs_bare_cli": 14859
+  },
+  "sessions": [
+    {
+      "id": "session-2026-05-05-1846",
+      "started": "2026-05-05T10:46:40.879Z",
+      "ended": "2026-05-05T10:49:09.948Z",
+      "reads": [
+        {
+          "file": "/Users/asky/code/data-insights/docs/api.md",
+          "tokens_estimated": 4656,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/asky/code/data-insights/docs/architecture.md",
+          "tokens_estimated": 491,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/asky/code/data-insights/plan.md",
+          "tokens_estimated": 87,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/asky/code/data-insights/plan.md",
+          "tokens_estimated": 12,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/asky/code/data-insights/docs/api.md",
+          "tokens_estimated": 140,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 5147,
+        "output_tokens_estimated": 239,
+        "reads_count": 2,
+        "writes_count": 3,
+        "repeated_reads_blocked": 4,
+        "anatomy_lookups": 2
+      }
+    }
+  ],
+  "daemon_usage": [],
+  "waste_flags": [],
+  "optimization_report": {
+    "last_generated": null,
+    "patterns": []
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "bugs": [
+    {
+      "id": "bug-001",
+      "timestamp": "2026-05-05T10:40:56.983Z",
+      "error_message": "CSS fix: id",
+      "file": "frontend/src/pages/DatasetEdit.tsx",
+      "root_cause": "id: 'dataset.description.placeholder' → 'dataset.shard.keys.placeholder'",
+      "fix": "Changed id: 'dataset.description.placeholder' → 'dataset.shard.keys.placeholder'",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-05T10:40:56.983Z"
+    },
+    {
+      "id": "bug-002",
+      "timestamp": "2026-05-05T10:41:14.034Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/pages/DatasetDetail.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block | Also: const shardKeys: string[] = (() => {; try {",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-05T10:41:33.242Z"
+    },
+    {
+      "id": "bug-003",
+      "timestamp": "2026-05-05T10:45:42.456Z",
+      "error_message": "Type error",
+      "file": "frontend/src/__tests__/chartQuery.test.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-05T10:45:42.456Z"
+    },
+    {
+      "id": "bug-004",
+      "timestamp": "2026-05-05T10:46:16.006Z",
+      "error_message": "CSS fix: data",
+      "file": "frontend/src/pages/ChartBuilder.tsx",
+      "root_cause": "data: data.map((item) => [item[xAxisField], item[metricFields[0] || '']]), → data.map((item) => [item[0], item[1]]),",
+      "fix": "Changed data: data.map((item) => [item[xAxisField], item[metricFields[0] || '']]), → data.map((item) => [item[0], item[1]]),",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-05T10:46:16.006Z"
+    },
+    {
+      "id": "bug-005",
+      "timestamp": "2026-05-05T10:46:31.864Z",
+      "error_message": "Wrong condition in logic",
+      "file": "frontend/src/pages/ChartBuilder.tsx",
+      "root_cause": "Condition was: if (dimensionFields.length === 0 || metricFields.lengt)",
+      "fix": "Changed to: if ((!isScatter && dimensionFields.length === 0)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-05T10:46:31.864Z"
+    }
+  ]
+}

@@ -112,6 +112,84 @@ interface ScatterResponse {
 
 ---
 
+## 一点五、契约演进方向
+
+### 1.5.1 当前模型的限制
+
+当前模型以 `dims` / `metrics` 作为统一输入，适合基础图表，但存在以下限制：
+
+- 无法表达日期维度精度，如按小时、天、周、月聚合。
+- 无法表达多组维度，例如透视表的“行/列”。
+- 无法表达多组指标，例如双轴图的“主轴/次轴”。
+- 无法承载图表样式配置和图表特有查询配置。
+- 前后端对图表语义和响应结构缺少统一契约。
+
+### 1.5.2 目标模型
+
+后续演进目标是由 Chart 模块维护结构化 `ChartSpec`，再转换为 Query 模块使用的 `QuerySpec`。
+
+#### ChartDefinition
+
+ChartDefinition 用于声明一种图表需要哪些输入：
+
+- 图表类型
+- 维度组定义
+- 指标组定义
+- 样式 schema
+- 查询配置 schema
+- 响应 shape
+- 字段数量和类型约束
+
+#### ChartSpec
+
+ChartSpec 用于表达图表实例绑定的真实字段和配置：
+
+- `chart_type`
+- `dimension_groups`
+- `metric_groups`
+- `style`
+- `query_options`
+
+字段绑定支持附加属性，例如：
+
+- 维度：`field`、`label`、`granularity`
+- 指标：`field`、`label`、`agg`、`alias`、`unit`
+
+#### QuerySpec
+
+QuerySpec 只表达查询语义，不直接表达“折线图”“饼图”等视觉类型，主要包括：
+
+- 结构化维度表达式
+- 结构化指标表达式
+- 过滤组
+- 排序
+- 分页
+- 时间粒度
+- 分桶
+- limit / topN
+
+### 1.5.3 首批图表示例
+
+- 折线图：`x_axis` 维度组 + `values` 指标组
+- 透视表：`rows` / `columns` 维度组 + `values` 指标组
+- 双轴图：`primary_axis` / `secondary_axis` 维度组 + `primary_values` / `secondary_values` 指标组
+- 饼图：`category` 维度组 + `value` 指标组，并支持 `merge_other_below_ratio`
+
+### 1.5.4 响应统一目标
+
+响应将逐步统一为：
+
+- `shape`：响应形态
+- `data`：图表数据主体
+- `meta`：分页、粒度、“其他”合并等元信息
+- `fields`：字段元数据
+- `sql`：调试 SQL
+
+兼容期内，旧的响应结构仍然保留。
+
+---
+
+
 ## 二、后端实现
 
 ### 2.1 新增文件结构

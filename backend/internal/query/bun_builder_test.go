@@ -93,6 +93,69 @@ func TestBunQueryBuilder_WithFilters(t *testing.T) {
 	}
 }
 
+func TestBunQueryBuilder_WithFilterLogicOr(t *testing.T) {
+	qb := NewBunQueryBuilder()
+
+	ast := qb.Build(
+		"users",
+		SourceTypeTable,
+		[]string{"city"},
+		[]MetricConfig{{Field: "age", Agg: AggAvg, Alias: "avg_age"}},
+		[]FilterConfig{
+			{Field: "status", Op: FilterEq, Value: "active"},
+			{Field: "age", Op: FilterGt, Value: 18, Logic: "or"},
+		},
+		nil,
+		nil,
+	)
+
+	sql, args := qb.BuildSelectQuery(ast)
+
+	t.Logf("Generated SQL: %s", sql)
+	t.Logf("Args: %v", args)
+
+	expected := "SELECT city, AVG(age) AS avg_age FROM users WHERE status = ? OR age > ? GROUP BY city"
+	if sql != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, sql)
+	}
+
+	if len(args) != 2 {
+		t.Errorf("Expected 2 args, got %d", len(args))
+	}
+}
+
+func TestBunQueryBuilder_WithMixedFilterLogic(t *testing.T) {
+	qb := NewBunQueryBuilder()
+
+	ast := qb.Build(
+		"orders",
+		SourceTypeTable,
+		[]string{"status"},
+		[]MetricConfig{{Field: "amount", Agg: AggSum, Alias: "total_amount"}},
+		[]FilterConfig{
+			{Field: "country", Op: FilterEq, Value: "CN"},
+			{Field: "category", Op: FilterEq, Value: "A", Logic: "and"},
+			{Field: "amount", Op: FilterGt, Value: 100, Logic: "or"},
+		},
+		nil,
+		nil,
+	)
+
+	sql, args := qb.BuildSelectQuery(ast)
+
+	t.Logf("Generated SQL: %s", sql)
+	t.Logf("Args: %v", args)
+
+	expected := "SELECT status, SUM(amount) AS total_amount FROM orders WHERE country = ? AND category = ? OR amount > ? GROUP BY status"
+	if sql != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, sql)
+	}
+
+	if len(args) != 3 {
+		t.Errorf("Expected 3 args, got %d", len(args))
+	}
+}
+
 func TestBunQueryBuilder_WithSort(t *testing.T) {
 	qb := NewBunQueryBuilder()
 

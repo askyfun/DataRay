@@ -102,7 +102,13 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
     const metricIds = queryConfig.metricGroups.flatMap((g) => g.fields);
     const metricFields = metricIds.map((id) => fieldMap.get(id)?.name).filter(Boolean) as string[];
 
-    if (dimensionFields.length === 0 || metricFields.length === 0 || data.length === 0) {
+    // scatter only needs 2 metrics, dims are optional
+    const isScatter = config.chartType === 'scatter';
+    if (
+      (!isScatter && dimensionFields.length === 0) ||
+      metricFields.length === 0 ||
+      data.length === 0
+    ) {
       return null;
     }
 
@@ -242,7 +248,8 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
           series: [
             {
               type: 'scatter',
-              data: data.map((item) => [item[xAxisField], item[metricFields[0] || '']]),
+              // ScatterResponse.data is [number, number][] — access by index
+              data: data.map((item) => [item[0], item[1]]),
             },
           ],
         };

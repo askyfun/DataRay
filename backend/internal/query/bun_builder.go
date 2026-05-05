@@ -134,8 +134,7 @@ func (qb *BunQueryBuilder) BuildSelectQuery(ast *QueryAST) (string, []interface{
 	// WHERE 子句
 	if len(ast.Filters) > 0 {
 		sb.WriteString(" WHERE ")
-		whereParts := qb.buildWhereParts(ast, &args)
-		sb.WriteString(strings.Join(whereParts, " AND "))
+		sb.WriteString(qb.buildWhereClause(ast, &args))
 	}
 
 	// GROUP BY 子句
@@ -242,12 +241,30 @@ func (qb *BunQueryBuilder) buildWhereParts(ast *QueryAST, args *[]interface{}) [
 
 	for i := range ast.Filters {
 		part := qb.buildFilterPart(&ast.Filters[i], args)
-		if part != "" {
-			parts = append(parts, part)
+		if part == "" {
+			continue
 		}
+
+		if len(parts) == 0 {
+			parts = append(parts, part)
+			continue
+		}
+
+		logic := strings.ToUpper(strings.TrimSpace(ast.Filters[i].Logic))
+		if logic != "OR" {
+			logic = "AND"
+		}
+
+		parts = append(parts, logic, part)
 	}
 
 	return parts
+}
+
+// buildWhereClause 构建完整 WHERE 子句，按过滤条件的 logic 连接。
+func (qb *BunQueryBuilder) buildWhereClause(ast *QueryAST, args *[]interface{}) string {
+	whereParts := qb.buildWhereParts(ast, args)
+	return strings.Join(whereParts, " ")
 }
 
 // buildFilterPart 构建单个过滤条件，使用参数化查询

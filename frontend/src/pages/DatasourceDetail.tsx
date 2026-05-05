@@ -20,6 +20,7 @@ import {
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { ColumnInfo, TableDataResult, TableInfo } from '../api';
 import { datasourcesApi } from '../api';
@@ -56,6 +57,7 @@ const normalizeTableDataResult = (result: TableDataResult | null | undefined): T
 });
 
 const DatasourceDetailPage: React.FC = () => {
+  const intl = useIntl();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const datasourceId = Number(id);
@@ -91,11 +93,13 @@ const DatasourceDetailPage: React.FC = () => {
       const response = await datasourcesApi.getTables(datasourceId);
       setTables(Array.isArray(response.data.data) ? response.data.data : []);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, 'Failed to load tables'));
+      message.error(
+        getApiErrorMessage(error, intl.formatMessage({ id: 'datasource.detail.loadTablesFailed' }))
+      );
     } finally {
       setTablesLoading(false);
     }
-  }, [datasourceId]);
+  }, [datasourceId, intl.formatMessage]);
 
   useEffect(() => {
     if (datasourceId) {
@@ -114,7 +118,12 @@ const DatasourceDetailPage: React.FC = () => {
       const columns = Array.isArray(response.data.data) ? response.data.data : [];
       setColumnsCache((prev) => ({ ...prev, [tableName]: columns }));
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, `Failed to load columns for ${tableName}`));
+      message.error(
+        getApiErrorMessage(
+          error,
+          intl.formatMessage({ id: 'datasource.detail.loadColumnsFailed' }, { name: tableName })
+        )
+      );
     } finally {
       setLoadingColumns((prev) => ({ ...prev, [tableName]: false }));
     }
@@ -140,7 +149,9 @@ const DatasourceDetailPage: React.FC = () => {
       );
       setPreviewData(normalizeTableDataResult(response.data.data));
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, 'Failed to load table data'));
+      message.error(
+        getApiErrorMessage(error, intl.formatMessage({ id: 'datasource.detail.loadDataFailed' }))
+      );
     } finally {
       setPreviewLoading(false);
     }
@@ -166,7 +177,7 @@ const DatasourceDetailPage: React.FC = () => {
 
   const columnsColumns = [
     {
-      title: 'Name',
+      title: intl.formatMessage({ id: 'datasource.detail.name' }),
       dataIndex: 'name',
       key: 'name',
       width: 200,
@@ -178,14 +189,14 @@ const DatasourceDetailPage: React.FC = () => {
       ),
     },
     {
-      title: 'Type',
+      title: intl.formatMessage({ id: 'datasource.detail.type' }),
       dataIndex: 'data_type',
       key: 'data_type',
       width: 150,
       render: (text: string) => <Tag color="blue">{text}</Tag>,
     },
     {
-      title: 'Comment',
+      title: intl.formatMessage({ id: 'datasource.detail.comment' }),
       dataIndex: 'comment',
       key: 'comment',
     },
@@ -193,7 +204,7 @@ const DatasourceDetailPage: React.FC = () => {
 
   const tableColumns = [
     {
-      title: 'Table Name',
+      title: intl.formatMessage({ id: 'datasource.detail.tableName' }),
       dataIndex: 'name',
       key: 'name',
       render: (text: string) => (
@@ -204,12 +215,12 @@ const DatasourceDetailPage: React.FC = () => {
       ),
     },
     {
-      title: 'Comment',
+      title: intl.formatMessage({ id: 'datasource.detail.comment' }),
       dataIndex: 'comment',
       key: 'comment',
     },
     {
-      title: 'Action',
+      title: intl.formatMessage({ id: 'datasource.detail.action' }),
       key: 'action',
       width: 120,
       render: (_: unknown, record: TableInfo) => (
@@ -219,7 +230,7 @@ const DatasourceDetailPage: React.FC = () => {
           icon={<EyeOutlined />}
           onClick={() => handlePreviewData(record.name)}
         >
-          Preview
+          {intl.formatMessage({ id: 'datasource.detail.preview' })}
         </Button>
       ),
     },
@@ -230,7 +241,7 @@ const DatasourceDetailPage: React.FC = () => {
       <div style={{ padding: '24px' }}>
         <Space direction="vertical" align="center">
           <Spin />
-          <Text type="secondary">Loading datasource...</Text>
+          <Text type="secondary">{intl.formatMessage({ id: 'datasource.detail.loading' })}</Text>
         </Space>
       </div>
     );
@@ -243,7 +254,11 @@ const DatasourceDetailPage: React.FC = () => {
           style={{ marginBottom: '16px' }}
           items={[
             {
-              title: <Link to="/datasources">Data Sources</Link>,
+              title: (
+                <Link to="/datasources">
+                  {intl.formatMessage({ id: 'datasource.detail.dataSources' })}
+                </Link>
+              ),
             },
             {
               title: datasource.name,
@@ -275,17 +290,17 @@ const DatasourceDetailPage: React.FC = () => {
           </div>
           <Space>
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/datasources')}>
-              Back
+              {intl.formatMessage({ id: 'datasource.detail.back' })}
             </Button>
             <Button icon={<ReloadOutlined />} onClick={loadTables} loading={tablesLoading}>
-              Refresh Tables
+              {intl.formatMessage({ id: 'datasource.detail.refreshTables' })}
             </Button>
           </Space>
         </div>
 
         <div style={{ marginBottom: '24px' }}>
           <Text strong style={{ marginBottom: '8px', display: 'block' }}>
-            Tables ({tables.length})
+            {intl.formatMessage({ id: 'datasource.detail.tablesCount' }, { count: tables.length })}
           </Text>
           <Table
             columns={tableColumns}
@@ -302,7 +317,9 @@ const DatasourceDetailPage: React.FC = () => {
                     <div style={{ padding: '16px', textAlign: 'center' }}>
                       <Space direction="vertical" align="center">
                         <Spin />
-                        <Text type="secondary">Loading columns...</Text>
+                        <Text type="secondary">
+                          {intl.formatMessage({ id: 'datasource.detail.loadingColumns' })}
+                        </Text>
                       </Space>
                     </div>
                   );
@@ -315,7 +332,9 @@ const DatasourceDetailPage: React.FC = () => {
                     rowKey="name"
                     size="small"
                     pagination={false}
-                    locale={{ emptyText: 'No columns found' }}
+                    locale={{
+                      emptyText: intl.formatMessage({ id: 'datasource.detail.noColumns' }),
+                    }}
                   />
                 );
               },
@@ -330,7 +349,7 @@ const DatasourceDetailPage: React.FC = () => {
               showSizeChanger: true,
             }}
             locale={{
-              emptyText: 'No tables found. Make sure the datasource connection is valid.',
+              emptyText: intl.formatMessage({ id: 'datasource.detail.noTables' }),
             }}
             size="small"
           />
@@ -338,7 +357,10 @@ const DatasourceDetailPage: React.FC = () => {
       </Card>
 
       <Modal
-        title={`Preview: ${previewTableName}`}
+        title={intl.formatMessage(
+          { id: 'datasource.detail.previewTitle' },
+          { name: previewTableName }
+        )}
         open={previewVisible}
         onCancel={() => setPreviewVisible(false)}
         footer={null}
@@ -349,8 +371,15 @@ const DatasourceDetailPage: React.FC = () => {
           <>
             <div style={{ marginBottom: 8 }}>
               <Text type="secondary">
-                Total: {previewData.total} rows | Primary Keys:{' '}
-                {previewData.primary_keys.join(', ') || 'None'}
+                {intl.formatMessage(
+                  { id: 'datasource.detail.totalRowsAndKeys' },
+                  {
+                    total: previewData.total,
+                    keys:
+                      previewData.primary_keys.join(', ') ||
+                      intl.formatMessage({ id: 'datasource.detail.none' }),
+                  }
+                )}
               </Text>
             </div>
             <Table
@@ -360,7 +389,7 @@ const DatasourceDetailPage: React.FC = () => {
                     {col}
                     {previewData.primary_keys.includes(col) && (
                       <Tag color="gold" style={{ marginLeft: 4 }}>
-                        PK
+                        {intl.formatMessage({ id: 'datasource.detail.pk' })}
                       </Tag>
                     )}
                   </Space>
@@ -376,7 +405,12 @@ const DatasourceDetailPage: React.FC = () => {
                     : undefined,
                 ellipsis: true,
                 render: (val: unknown) => {
-                  if (val === null || val === undefined) return <Text type="secondary">NULL</Text>;
+                  if (val === null || val === undefined)
+                    return (
+                      <Text type="secondary">
+                        {intl.formatMessage({ id: 'datasource.detail.null' })}
+                      </Text>
+                    );
                   if (typeof val === 'boolean') return val ? 'true' : 'false';
                   return String(val);
                 },
@@ -408,7 +442,7 @@ const DatasourceDetailPage: React.FC = () => {
                 pageSize={previewPageSize}
                 total={previewData.total}
                 showSizeChanger
-                showTotal={(total) => `Total ${total} rows`}
+                showTotal={(total) => intl.formatMessage({ id: 'common.totalRows' }, { total })}
                 onChange={handlePreviewPageChange}
               />
             </div>

@@ -16,6 +16,8 @@ type Dataset struct {
 	PreviewData      *string `json:"preview_data"`
 	QualityRules     string  `json:"quality_rules"`
 	Columns          string  `json:"columns"`
+	ShardEnabled     bool    `json:"shard_enabled"`
+	ShardKeys        string  `json:"shard_keys"`
 	CreatedAt        string  `json:"created_at"`
 	UpdatedAt        string  `json:"updated_at"`
 }

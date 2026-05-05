@@ -308,6 +308,8 @@ func toDatasetEntity(m *model.Dataset) *entity.Dataset {
 		Tags:         m.Tags,
 		QualityRules: m.QualityRules,
 		Columns:      m.Columns,
+		ShardEnabled: m.ShardEnabled,
+		ShardKeys:    m.ShardKeys,
 	}
 	if m.TableName.Valid {
 		e.TableName = &m.TableName.String
@@ -355,6 +357,8 @@ func toDatasetModel(e *entity.Dataset) *model.Dataset {
 		Tags:         e.Tags,
 		QualityRules: e.QualityRules,
 		Columns:      e.Columns,
+		ShardEnabled: e.ShardEnabled,
+		ShardKeys:    e.ShardKeys,
 	}
 	if e.TableName != nil {
 		m.TableName = sql.NullString{String: *e.TableName, Valid: true}

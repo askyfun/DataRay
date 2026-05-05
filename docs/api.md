@@ -1019,6 +1019,124 @@ POST /api/charts/query
 }
 ```
 
+**响应 (Scatter)**:
+
+散点图使用两个 metrics：`metrics[0]` 映射 X 轴，`metrics[1]` 映射 Y 轴。dims 可选（不影响散点数据）。
+
+请求示例：
+
+```json
+{
+  "dataset_id": 1,
+  "chart_type": "scatter",
+  "dims": [],
+  "metrics": [
+    {"field": "revenue", "agg": "sum", "alias": "total_revenue"},
+    {"field": "cost", "agg": "sum", "alias": "total_cost"}
+  ]
+}
+```
+
+响应示例：
+
+```json
+{
+  "code": 20000,
+  "msg": "success",
+  "trace": "req_xxx",
+  "data": {
+    "data": [[100, 50], [200, 80], [150, 60]]
+  }
+}
+```
+
+**兼容协议说明**:
+
+- 当前实现仍以 `dims` / `metrics` / `filters` / `pagination` / `sort` 为主。
+- 后续演进目标是在保持当前协议兼容的前提下，引入结构化 `chart_spec`。
+- 兼容期内建议前端优先遵循本节旧协议；新协议文档以“草案”形式定义在下文。
+
+**目标契约草案**:
+
+目标请求结构将从扁平的 `dims` / `metrics` 演进为结构化 `chart_spec`：
+
+```json
+{
+  "dataset_id": 1,
+  "chart_spec": {
+    "chart_type": "line",
+    "dimension_groups": {
+      "x_axis": [
+        {
+          "field": "created_at",
+          "label": "日期",
+          "granularity": "day"
+        }
+      ]
+    },
+    "metric_groups": {
+      "values": [
+        {
+          "field": "count",
+          "label": "总数",
+          "agg": "sum",
+          "alias": "total_count"
+        }
+      ]
+    },
+    "style": {
+      "smooth": true
+    },
+    "query_options": {}
+  }
+}
+```
+
+`chart_spec` 设计目标：
+
+- 支持多组维度，如透视表的 `rows` / `columns`。
+- 支持多组指标，如双轴图的 `primary_values` / `secondary_values`。
+- 支持字段属性，如日期维度的 `granularity`。
+- 支持图表样式配置，如颜色、线型、表格行高。
+- 支持图表特有查询配置，如饼图低比例合并为“其他”。
+
+**目标响应结构草案**:
+
+图表查询响应会逐步统一为 Envelope 结构：
+
+```json
+{
+  "code": 20000,
+  "msg": "success",
+  "trace": "req_xxx",
+  "data": {
+    "shape": "axis",
+    "data": {
+      "x_axis": ["2026-01-01"],
+      "series": [{"name": "total_count", "data": [100]}]
+    },
+    "meta": {
+      "chart_type": "line",
+      "granularity": "day"
+    },
+    "fields": [
+      {"name": "created_at", "label": "日期"},
+      {"name": "total_count", "label": "总数"}
+    ],
+    "sql": {
+      "select_sql": "SELECT ...",
+      "count_sql": "SELECT ..."
+    }
+  }
+}
+```
+
+兼容期内：
+
+- 仍保留当前各图表的 `data` 结构。
+- 仍保留顶层 `select_sql` / `count_sql` 字段。
+- 新结构作为后续升级目标，前后端需要围绕该结构补齐测试与实现。
+
 ---
 
 ### 2.4 分享管理 (Share)

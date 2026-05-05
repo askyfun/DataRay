@@ -390,3 +390,118 @@ func TestGetProcessor_BarLineArea(t *testing.T) {
 		})
 	}
 }
+
+// TestScatterProcessor_TwoMetrics 验证散点图使用 metrics[0] 作为 X、metrics[1] 作为 Y
+func TestScatterProcessor_TwoMetrics(t *testing.T) {
+	p := &ScatterProcessor{}
+	rows := []map[string]any{
+		{"total_revenue": 100.0, "total_cost": 50.0},
+		{"total_revenue": 200.0, "total_cost": 80.0},
+		{"total_revenue": 150.0, "total_cost": 60.0},
+	}
+	metrics := []MetricConfig{
+		{Field: "revenue", Agg: AggSum, Alias: "total_revenue"},
+		{Field: "cost", Agg: AggSum, Alias: "total_cost"},
+	}
+	resp, err := p.Process(rows, []string{}, metrics)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	scatterResp, ok := resp.(*ScatterResponse)
+	if !ok {
+		t.Fatalf("expected *ScatterResponse, got %T", resp)
+	}
+
+	if len(scatterResp.Data) != 3 {
+		t.Fatalf("expected 3 data points, got %d", len(scatterResp.Data))
+	}
+
+	// metrics[0] (total_revenue) → X, metrics[1] (total_cost) → Y
+	expected := [][]float64{{100, 50}, {200, 80}, {150, 60}}
+	for i, pt := range scatterResp.Data {
+		if len(pt) != 2 {
+			t.Fatalf("point %d: expected length 2, got %d", i, len(pt))
+		}
+		if pt[0] != expected[i][0] || pt[1] != expected[i][1] {
+			t.Errorf("point %d: expected [%v, %v], got [%v, %v]", i, expected[i][0], expected[i][1], pt[0], pt[1])
+		}
+	}
+}
+
+// TestScatterProcessor_EmptyRows 验证空行返回空数据
+func TestScatterProcessor_EmptyRows(t *testing.T) {
+	p := &ScatterProcessor{}
+	metrics := []MetricConfig{
+		{Field: "revenue", Agg: AggSum},
+		{Field: "cost", Agg: AggSum},
+	}
+	resp, err := p.Process([]map[string]any{}, []string{}, metrics)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	scatterResp := resp.(*ScatterResponse)
+	if len(scatterResp.Data) != 0 {
+		t.Errorf("expected empty data, got %v", scatterResp.Data)
+	}
+}
+
+// TestScatterProcessor_LessThanTwoMetrics 验证少于 2 个指标返回空数据
+func TestScatterProcessor_LessThanTwoMetrics(t *testing.T) {
+	p := &ScatterProcessor{}
+	rows := []map[string]any{{"value": 100}}
+	metrics := []MetricConfig{{Field: "value", Agg: AggSum}}
+	resp, err := p.Process(rows, []string{}, metrics)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	scatterResp := resp.(*ScatterResponse)
+	if len(scatterResp.Data) != 0 {
+		t.Errorf("expected empty data for single metric, got %v", scatterResp.Data)
+	}
+}
+
+// TestScatterProcessor_DimsIgnored 验证 dims 参数不影响散点数据
+func TestScatterProcessor_DimsIgnored(t *testing.T) {
+	p := &ScatterProcessor{}
+	rows := []map[string]any{
+		{"city": "Beijing", "revenue": 100.0, "cost": 50.0},
+	}
+	metrics := []MetricConfig{
+		{Field: "revenue", Agg: AggSum},
+		{Field: "cost", Agg: AggSum},
+	}
+	resp, err := p.Process(rows, []string{"city"}, metrics)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	scatterResp := resp.(*ScatterResponse)
+	if len(scatterResp.Data) != 1 {
+		t.Fatalf("expected 1 data point, got %d", len(scatterResp.Data))
+	}
+	if scatterResp.Data[0][0] != 100 || scatterResp.Data[0][1] != 50 {
+		t.Errorf("expected [100, 50], got %v", scatterResp.Data[0])
+	}
+}
+
+// TestScatterProcessor_NonNumericSkipped 验证非数值行被跳过
+func TestScatterProcessor_NonNumericSkipped(t *testing.T) {
+	p := &ScatterProcessor{}
+	rows := []map[string]any{
+		{"x": 10.0, "y": 20.0},
+		{"x": "not_a_number", "y": 30.0},
+		{"x": 40.0, "y": 50.0},
+	}
+	metrics := []MetricConfig{
+		{Field: "x", Agg: AggSum},
+		{Field: "y", Agg: AggSum},
+	}
+	resp, err := p.Process(rows, []string{}, metrics)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	scatterResp := resp.(*ScatterResponse)
+	if len(scatterResp.Data) != 2 {
+		t.Fatalf("expected 2 data points, got %d", len(scatterResp.Data))
+	}
+}

@@ -109,6 +109,8 @@ describe('ChartBuilder', () => {
             query_type: 'table',
             mode: 'direct',
             columns: '[]',
+            shard_enabled: false,
+            shard_keys: '[]',
           },
         ],
       })

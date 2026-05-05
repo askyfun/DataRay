@@ -63,6 +63,8 @@ func (h *DatasetHandler) Create(c *gin.Context) {
 		Description  string `json:"description"`
 		Tags         string `json:"tags"`
 		Columns      string `json:"columns"`
+		ShardEnabled bool   `json:"shard_enabled"`
+		ShardKeys    string `json:"shard_keys"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, err.Error())
@@ -76,6 +78,8 @@ func (h *DatasetHandler) Create(c *gin.Context) {
 		Mode:         req.Mode,
 		Tags:         req.Tags,
 		Columns:      req.Columns,
+		ShardEnabled: req.ShardEnabled,
+		ShardKeys:    req.ShardKeys,
 	}
 	if req.TableName != "" {
 		ds.TableName = &req.TableName

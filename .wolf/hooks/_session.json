@@ -1,0 +1,57 @@
+{
+  "session_id": "session-2026-05-05-1846",
+  "started": "2026-05-05T10:46:40.879Z",
+  "files_read": {
+    "/Users/asky/code/data-insights/docs/api.md": {
+      "count": 4,
+      "tokens": 4656,
+      "first_read": "2026-05-05T10:47:31.794Z"
+    },
+    "/Users/asky/code/data-insights/docs/architecture.md": {
+      "count": 2,
+      "tokens": 491,
+      "first_read": "2026-05-05T10:48:04.203Z"
+    },
+    "/Users/asky/code/data-insights/frontend/src/__tests__/pages/ChartBuilder.dragOverlay.test.tsx": {
+      "count": 1,
+      "tokens": 1342,
+      "first_read": "2026-05-05T10:51:12.959Z"
+    }
+  },
+  "files_written": [
+    {
+      "file": "/Users/asky/code/data-insights/plan.md",
+      "action": "edit",
+      "tokens": 87,
+      "at": "2026-05-05T10:47:18.890Z"
+    },
+    {
+      "file": "/Users/asky/code/data-insights/plan.md",
+      "action": "edit",
+      "tokens": 12,
+      "at": "2026-05-05T10:47:22.183Z"
+    },
+    {
+      "file": "/Users/asky/code/data-insights/docs/api.md",
+      "action": "edit",
+      "tokens": 140,
+      "at": "2026-05-05T10:47:58.118Z"
+    },
+    {
+      "file": "/Users/asky/code/data-insights/frontend/src/__tests__/pages/ChartBuilder.test.tsx",
+      "action": "edit",
+      "tokens": 38,
+      "at": "2026-05-05T10:51:00.872Z"
+    }
+  ],
+  "edit_counts": {
+    "plan.md": 2,
+    "docs/api.md": 1,
+    "frontend/src/__tests__/pages/ChartBuilder.test.tsx": 1
+  },
+  "anatomy_hits": 3,
+  "anatomy_misses": 0,
+  "repeated_reads_warned": 4,
+  "cerebrum_warnings": 0,
+  "stop_count": 1
+}

@@ -14,6 +14,7 @@ import {
   Select,
   Space,
   Spin,
+  Switch,
   Table,
   Tag,
   Typography,
@@ -40,6 +41,7 @@ const DatasetEditPage: React.FC = () => {
   const [datasetColumns, setDatasetColumns] = useState<DatasetColumn[]>([]);
   const [selectedDatasourceId, setSelectedDatasourceId] = useState<number | null>(null);
   const [queryType, setQueryType] = useState<string>('table');
+  const [shardEnabled, setShardEnabled] = useState(false);
   const [datasources, setDatasources] = useState<any[]>([]);
 
   const datasetId = id ? parseInt(id, 10) : null;
@@ -99,6 +101,13 @@ const DatasetEditPage: React.FC = () => {
         const response = await datasetsApi.getById(datasetId);
         const dataset = response.data.data;
 
+        let parsedShardKeys: string[] = [];
+        try {
+          parsedShardKeys = dataset.shard_keys ? JSON.parse(dataset.shard_keys) : [];
+        } catch {
+          parsedShardKeys = [];
+        }
+
         form.setFieldsValue({
           name: dataset.name,
           datasource_id: dataset.datasource_id,
@@ -106,10 +115,12 @@ const DatasetEditPage: React.FC = () => {
           table_name: dataset.table_name ?? undefined,
           query_sql: dataset.query_sql ?? undefined,
           description: dataset.description || '',
+          shard_keys: parsedShardKeys,
         });
 
         setSelectedDatasourceId(dataset.datasource_id);
         setQueryType(dataset.query_type);
+        setShardEnabled(dataset.shard_enabled || false);
 
         // Fetch tables if needed
         if (dataset.datasource_id && dataset.query_type === 'table') {
@@ -165,6 +176,8 @@ const DatasetEditPage: React.FC = () => {
         table_name: values.query_type === 'table' ? values.table_name : undefined,
         query_sql: values.query_type === 'sql' ? values.query_sql : undefined,
         description: values.description,
+        shard_enabled: shardEnabled,
+        shard_keys: shardEnabled ? values.shard_keys || [] : [],
       };
 
       await datasetsApi.update(datasetId, data);
@@ -359,6 +372,38 @@ const DatasetEditPage: React.FC = () => {
               rows={3}
             />
           </Form.Item>
+
+          <Form.Item label={intl.formatMessage({ id: 'dataset.shard.enabled' })}>
+            <Switch checked={shardEnabled} onChange={setShardEnabled} />
+          </Form.Item>
+
+          {shardEnabled && (
+            <Form.Item
+              name="shard_keys"
+              label={intl.formatMessage({ id: 'dataset.shard.keys' })}
+              rules={[
+                {
+                  required: true,
+                  message: intl.formatMessage({ id: 'dataset.shard.keys.required' }),
+                },
+              ]}
+            >
+              <Select
+                mode="multiple"
+                placeholder={intl.formatMessage({ id: 'dataset.shard.keys.placeholder' })}
+                loading={columnsLoading}
+              >
+                {datasetColumns.map((col) => (
+                  <Select.Option key={col.name} value={col.name}>
+                    {col.name}
+                    <Text type="secondary" style={{ marginLeft: 8 }}>
+                      {col.type}
+                    </Text>
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          )}
 
           <Form.Item>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>

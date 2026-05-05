@@ -240,10 +240,25 @@ const DatasetDetailPage: React.FC = () => {
     });
   };
 
-  const columnsManagementTableData = columns.map((col) => ({
-    ...col,
-    key: col.name,
-  }));
+  const shardKeys: string[] = (() => {
+    try {
+      return JSON.parse((dataset || currentDataset)?.shard_keys || '[]');
+    } catch {
+      return [];
+    }
+  })();
+  const shardKeySet = new Set(shardKeys);
+
+  const columnsManagementTableData = [...columns]
+    .sort((a, b) => {
+      const aShard = shardKeySet.has(a.name) ? 0 : 1;
+      const bShard = shardKeySet.has(b.name) ? 0 : 1;
+      return aShard - bShard;
+    })
+    .map((col) => ({
+      ...col,
+      key: col.name,
+    }));
 
   const fieldsTableColumns = [
     {
@@ -259,6 +274,9 @@ const DatasetDetailPage: React.FC = () => {
           >
             {name}
           </Text>
+          {shardKeySet.has(name) && (
+            <Tag color="orange">{intl.formatMessage({ id: 'field.shardKey' })}</Tag>
+          )}
           {record.isVirtual && (
             <Tag color="purple">{intl.formatMessage({ id: 'field.virtual' })}</Tag>
           )}
@@ -477,6 +495,31 @@ const DatasetDetailPage: React.FC = () => {
           <Descriptions.Item label={intl.formatMessage({ id: 'dataset.detail.fields' })}>
             {columns.length} {intl.formatMessage({ id: 'dataset.detail.fieldsCount' })}
           </Descriptions.Item>
+          <Descriptions.Item label={intl.formatMessage({ id: 'dataset.shard.enabled' })}>
+            {displayDataset?.shard_enabled ? (
+              <Tag color="orange">{intl.formatMessage({ id: 'dataset.shard.enabled.yes' })}</Tag>
+            ) : (
+              <Tag>{intl.formatMessage({ id: 'dataset.shard.enabled.no' })}</Tag>
+            )}
+          </Descriptions.Item>
+          {displayDataset?.shard_enabled && (
+            <Descriptions.Item label={intl.formatMessage({ id: 'dataset.shard.keys' })}>
+              {(() => {
+                try {
+                  const keys: string[] = JSON.parse(displayDataset.shard_keys || '[]');
+                  return keys.length > 0
+                    ? keys.map((k) => (
+                        <Tag key={k} color="orange">
+                          {k}
+                        </Tag>
+                      ))
+                    : '-';
+                } catch {
+                  return '-';
+                }
+              })()}
+            </Descriptions.Item>
+          )}
         </Descriptions>
 
         <Tabs

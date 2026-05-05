@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AxisResponse, ChartType } from '@/idls/chart';
+import type { AxisResponse, ChartType, ScatterResponse } from '@/idls/chart';
 
 /**
  * Pure transformation function matching the logic in store/index.ts executeChartQuery
@@ -124,5 +124,54 @@ describe('ChartType includes area', () => {
   it('should accept all expected chart types', () => {
     const types: ChartType[] = ['line', 'bar', 'pie', 'scatter', 'table', 'area'];
     expect(types).toHaveLength(6);
+  });
+});
+
+describe('ScatterResponse data transformation', () => {
+  /**
+   * Reproduce the bug: scatter data is raw [number, number][] tuples,
+   * but ChartCanvas tries to access item[dimensionField] (object key lookup on a tuple).
+   * This always yields undefined, breaking scatter charts.
+   */
+  it('should NOT treat scatter tuples as objects with named keys', () => {
+    const scatterData: ScatterResponse = {
+      data: [
+        [100, 50],
+        [200, 80],
+        [150, 60],
+      ],
+    };
+
+    // Current broken behavior: treating tuple as object
+    const dimensionField = 'city';
+    const metricField = 'revenue';
+
+    const brokenResult = scatterData.data.map((item) => [
+      item[dimensionField as unknown as number],
+      item[metricField as unknown as number],
+    ]);
+
+    // This is what actually happens: all values are undefined
+    expect(brokenResult[0][0]).toBeUndefined();
+    expect(brokenResult[0][1]).toBeUndefined();
+  });
+
+  it('should access scatter tuples by index: [0] for X, [1] for Y', () => {
+    const scatterData: ScatterResponse = {
+      data: [
+        [100, 50],
+        [200, 80],
+        [150, 60],
+      ],
+    };
+
+    // Correct behavior: access by index
+    const correctResult = scatterData.data.map((item) => [item[0], item[1]]);
+
+    expect(correctResult).toEqual([
+      [100, 50],
+      [200, 80],
+      [150, 60],
+    ]);
   });
 });

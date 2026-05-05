@@ -193,9 +193,11 @@ make clean             # 清理 dist、node_modules、backend/bin
 | 文档 | 说明 |
 |------|------|
 | [docs/setup.md](docs/setup.md) | 环境搭建、运行命令 |
-| [docs/architecture.md](docs/architecture.md) | 目录结构、技术栈 |
+| [docs/architecture.md](docs/architecture.md) | 目录结构、技术栈、图表查询与可视化语义分层 |
+| [docs/api.md](docs/api.md) | API 接口文档（统一规范，含图表查询兼容协议与目标契约草案） |
+| [docs/api-spec.md](docs/api-spec.md) | API 规范详情（含图表查询契约演进草案） |
+| [docs/chart-builder-plan.md](docs/chart-builder-plan.md) | 图表构建器功能设计与契约演进方向 |
 | [docs/coding-style.md](docs/coding-style.md) | 代码风格指南 |
-| [docs/api.md](docs/api.md) | API 接口文档（统一规范） |
 | [docs/todo.md](docs/todo.md) | 开发任务清单 |
 
 ## 已知限制
