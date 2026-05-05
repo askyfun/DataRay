@@ -3,11 +3,11 @@
 ## 前端
 
 ```bash
-cd frontend && npm install
+cd frontend && pnpm install
 
-npm run dev          # 开发模式 (端口 3000)
-npm run build        # 构建 (tsc + vite build)
-npm run preview      # 预览构建结果
+pnpm dev             # 开发模式 (端口 3000)
+pnpm build           # 构建 (tsc + vite build)
+pnpm preview         # 预览构建结果
 ```
 
 ## 后端

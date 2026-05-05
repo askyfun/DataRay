@@ -13,15 +13,17 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "build:check": "npm run check && npm run test"
+    "build:check": "pnpm check && pnpm test"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.2.2",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@sentry/react": "^10.39.0",
     "antd": "^5.22.5",
     "axios": "^1.7.9",
+    "dayjs": "^1.11.20",
     "echarts": "^5.5.1",
     "echarts-for-react": "latest",
     "react": "^18.3.1",

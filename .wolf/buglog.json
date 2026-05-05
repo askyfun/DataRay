@@ -80,6 +80,70 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-05T10:46:31.864Z"
+    },
+    {
+      "id": "bug-006",
+      "timestamp": "2026-05-05T11:07:51.677Z",
+      "error_message": "Incorrect value in code",
+      "file": "Makefile",
+      "root_cause": "Had \"  make install          安装前后端依赖\"",
+      "fix": "Changed to \"  make install          安装前后端依赖 (pnpm)\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "unknown"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-05T11:07:51.677Z"
+    },
+    {
+      "id": "bug-007",
+      "timestamp": "2026-05-05T11:07:51.792Z",
+      "error_message": "Wrong reference: npm should be pnpm",
+      "file": "Makefile",
+      "root_cause": "Used \"npm\" instead of \"pnpm\"",
+      "fix": "Changed npm → pnpm",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "unknown"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-05T11:07:51.792Z"
+    },
+    {
+      "id": "bug-008",
+      "timestamp": "2026-05-05T11:08:01.351Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/package.json",
+      "root_cause": "Had \"npm run check && npm run test\"",
+      "fix": "Changed to \"pnpm check && pnpm test\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "json"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-05T11:08:01.351Z"
+    },
+    {
+      "id": "bug-009",
+      "timestamp": "2026-05-05T11:08:47.857Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/CLAUDE.md",
+      "root_cause": "Had `npm run format`",
+      "fix": "Changed to `pnpm format`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-05T11:08:48.084Z"
     }
   ]
 }

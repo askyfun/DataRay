@@ -150,8 +150,8 @@ describe('ComponentName', () => {
 ### Formatting
 
 - Use Biome for formatting (2 spaces indent, 100 char line width)
-- Run `npm run format` before committing
-- Run `npm run check` to verify code quality
+- Run `pnpm format` before committing
+- Run `pnpm check` to verify code quality
 
 ### Accessibility
 
@@ -177,17 +177,17 @@ frontend/src/
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run format` | Format code with Biome |
-| `npm run lint` | Lint with Biome |
-| `npm run check` | Run Biome check |
-| `npm run test` | Run tests |
-| `npm run build:check` | Run full check (lint + test) |
+| `pnpm dev` | Start development server |
+| `pnpm build` | Build for production |
+| `pnpm format` | Format code with Biome |
+| `pnpm lint` | Lint with Biome |
+| `pnpm check` | Run Biome check |
+| `pnpm test` | Run tests |
+| `pnpm build:check` | Run full check (lint + test) |
 
 ## Pre-commit
 
 Before committing, ensure:
-1. `npm run build:check` passes
+1. `pnpm build:check` passes
 2. All tests pass
 3. No TypeScript errors

@@ -55,8 +55,8 @@ go run ./cmd/main.go -f etc/config.yaml
 
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ## 配置

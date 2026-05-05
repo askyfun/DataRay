@@ -13,7 +13,7 @@ help:
 	@echo "$(BLUE)DataRay 开发命令$(NC)"
 	@echo ""
 	@echo "$(GREEN)安装依赖:$NC"
-	@echo "  make install          安装前后端依赖"
+	@echo "  make install          安装前后端依赖 (pnpm)"
 	@echo "  make install-frontend 安装前端依赖"
 	@echo "  make install-backend  安装后端依赖"
 	@echo ""
@@ -41,7 +41,7 @@ install: install-frontend install-backend
 # 安装前端依赖
 install-frontend:
 	@echo "$(YELLOW)安装前端依赖...$(NC)"
-	cd frontend && npm install
+	cd frontend && pnpm install
 
 # 安装后端依赖
 install-backend:
@@ -55,7 +55,7 @@ dev: dev-backend dev-frontend
 # 前端开发服务器
 dev-frontend:
 	@echo "$(YELLOW)启动前端开发服务器...$(NC)"
-	cd frontend && npm run dev
+	cd frontend && pnpm dev
 
 # 后端开发服务器
 dev-backend:
@@ -69,7 +69,7 @@ build: build-frontend build-backend
 # 构建前端
 build-frontend:
 	@echo "$(YELLOW)构建前端...$(NC)"
-	cd frontend && npm run build
+	cd frontend && pnpm build
 
 # 构建后端
 build-backend:

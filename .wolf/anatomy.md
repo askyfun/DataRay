@@ -1,19 +1,24 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-05T10:51:00.865Z
-> Files: 271 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-05T11:11:32.090Z
+> Files: 273 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../.claude/projects/-Users-asky-code-data-insights/memory/
+
+- `feedback_pnpm_strict_deps.md` (~109 tok)
+- `MEMORY.md` — Memory Index (~163 tok)
 
 ## ./
 
 - `.DS_Store` (~2183 tok)
 - `.gitignore` — Git ignore rules (~128 tok)
-- `AGENTS.md` — DataRay 开发规范 (~1343 tok)
+- `AGENTS.md` — DataRay 开发规范 (~1344 tok)
 - `chrome_perf_trace.json` (~100498 tok)
 - `CLAUDE.md` — OpenWolf (~1400 tok)
 - `console-errors.txt` (~56 tok)
 - `docker-compose.yml` — Docker Compose services (~270 tok)
 - `LICENSE` — Project license (~9374 tok)
-- `Makefile` — Make build targets (~586 tok)
+- `Makefile` — DataRay Makefile (~587 tok)
 - `MEMORY.md` — 经验记录 (~221 tok)
 - `package-lock.json` — npm lock file (~215 tok)
 - `package.json` — Node.js package manifest (~175 tok)
@@ -74,7 +79,7 @@
 
 ## .husky/
 
-- `pre-commit` (~9 tok)
+- `pre-commit` (~10 tok)
 
 ## .husky/_/
 
@@ -385,7 +390,7 @@
 - `architecture.md` — DataRay 架构文档 (~491 tok)
 - `chart-builder-plan.md` — Chart Builder 增强实现计划 (~1681 tok)
 - `coding-style.md` — DataRay 代码风格指南 (~631 tok)
-- `setup.md` — DataRay 环境搭建 (~161 tok)
+- `setup.md` — DataRay 环境搭建 (~162 tok)
 - `todo.md` — DataRay 开发计划汇总 (~2124 tok)
 
 ## docs/DataWind/
@@ -403,11 +408,11 @@
 - `.DS_Store` (~1639 tok)
 - `AGENTS.md` — Frontend AGENTS.md (~890 tok)
 - `biome.json` — Biome linter/formatter configuration (~172 tok)
-- `CLAUDE.md` — DataRay Frontend Coding Standards (~1100 tok)
+- `CLAUDE.md` — DataRay Frontend Coding Standards (~1093 tok)
 - `Dockerfile` — Docker container definition (~40 tok)
 - `index.html` — DataRay (~96 tok)
-- `package-lock.json` — npm lock file (~53380 tok)
-- `package.json` — Node.js package manifest (~429 tok)
+- `package.json` — Node.js package manifest (~427 tok)
+- `pnpm-lock.yaml` — pnpm lock file (~126 tok)
 - `tsconfig.json` — TypeScript configuration (~180 tok)
 - `tsconfig.node.json` (~67 tok)
 - `vite.config.ts` — Vite build configuration (~176 tok)
@@ -430,7 +435,7 @@
 
 ## frontend/src/__tests__/pages/
 
-- `ChartBuilder.dragOverlay.test.tsx` — 模拟 dnd-kit 上下文，方便测试直接触发拖拽开始/取消事件。 (~1342 tok)
+- `ChartBuilder.dragOverlay.test.tsx` — 模拟 dnd-kit 上下文，方便测试直接触发拖拽开始/取消事件。 (~1338 tok)
 - `ChartBuilder.test.tsx` — mockAxiosResponse (~1532 tok)
 - `DatasourceDetail.test.tsx` — Mock the API module (~1247 tok)
 

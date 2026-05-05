@@ -13,6 +13,8 @@
 - **Project:** data-insights
 - **Description:** 拖拽式 BI 可视化分析平台 MVP
 
+- **[2026-05-05] pnpm 严格依赖解析**: 从 npm 切换到 pnpm 后，antd 的传递依赖 `@ant-design/icons` 和 `dayjs` 必须显式安装。npm 会自动 hoist 这些依赖，pnpm 不会。这是 pnpm 的正确行为——依赖应该显式声明。
+
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->

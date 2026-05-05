@@ -58,14 +58,14 @@ frontend/src/
 
 ```bash
 # 前端
-cd frontend && npm install
-npm run dev            # 开发服务器，端口 3000
-npm run build          # tsc + vite 构建
-npm run format         # biome 格式化
-npm run lint           # biome lint 检查
-npm run check          # biome 完整检查（lint + 格式化）
-npm run test           # vitest 运行测试
-npm run build:check    # biome check + vitest（提交前验证）
+cd frontend && pnpm install
+pnpm dev               # 开发服务器，端口 3000
+pnpm build             # tsc + vite 构建
+pnpm format            # biome 格式化
+pnpm lint              # biome lint 检查
+pnpm check             # biome 完整检查（lint + 格式化）
+pnpm test              # vitest 运行测试
+pnpm build:check       # biome check + vitest（提交前验证）
 
 # 后端
 cd backend && go mod download

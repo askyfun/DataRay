@@ -36,7 +36,7 @@ function mockAxiosResponse<T>(data: ApiResponse<T>): AxiosResponse<ApiResponse<T
  * 主要逻辑：保留最近一次渲染传入的回调，并把 DragOverlay 渲染到测试 DOM 中。
  */
 vi.mock('@dnd-kit/core', async () => {
-  const React = await import('react');
+  await import('react');
 
   return {
     DndContext: ({ children, onDragStart, onDragCancel }: MockDndContextProps) => {
