@@ -140,10 +140,7 @@ func (qb *BunQueryBuilder) BuildSelectQuery(ast *QueryAST) (string, []interface{
 	// GROUP BY 子句
 	if len(ast.Dimensions) > 0 {
 		sb.WriteString(" GROUP BY ")
-		groupByParts := make([]string, len(ast.Dimensions))
-		for i, dim := range ast.Dimensions {
-			groupByParts[i] = safeIdentifier(dim)
-		}
+		groupByParts := qb.buildGroupByParts(ast)
 		sb.WriteString(strings.Join(groupByParts, ", "))
 	}
 
@@ -160,6 +157,8 @@ func (qb *BunQueryBuilder) BuildSelectQuery(ast *QueryAST) (string, []interface{
 		pageSize := ast.Pagination.PageSize
 		offset := (ast.Pagination.Page - 1) * ast.Pagination.PageSize
 		sb.WriteString(fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset))
+	} else if ast.Limit > 0 {
+		sb.WriteString(fmt.Sprintf(" LIMIT %d", ast.Limit))
 	}
 
 	return sb.String(), args
@@ -195,11 +194,12 @@ func (qb *BunQueryBuilder) BuildCountQuery(ast *QueryAST) (string, []interface{}
 	// GROUP BY 子句
 	if len(ast.Dimensions) > 0 {
 		sb.WriteString(" GROUP BY ")
-		groupByParts := make([]string, len(ast.Dimensions))
-		for i, dim := range ast.Dimensions {
-			groupByParts[i] = safeIdentifier(dim)
-		}
+		groupByParts := qb.buildGroupByParts(ast)
 		sb.WriteString(strings.Join(groupByParts, ", "))
+	}
+
+	if ast.Pagination == nil && ast.Limit > 0 {
+		sb.WriteString(fmt.Sprintf(" LIMIT %d", ast.Limit))
 	}
 
 	sb.WriteString(") AS _count_query")
@@ -212,8 +212,14 @@ func (qb *BunQueryBuilder) buildSelectParts(ast *QueryAST) []string {
 	var parts []string
 
 	// 维度
-	for _, dim := range ast.Dimensions {
-		parts = append(parts, safeIdentifier(dim))
+	if len(ast.DimensionExprs) > 0 {
+		for _, dim := range ast.DimensionExprs {
+			parts = append(parts, qb.renderDimensionSelect(dim))
+		}
+	} else {
+		for _, dim := range ast.Dimensions {
+			parts = append(parts, safeIdentifier(dim))
+		}
 	}
 
 	// 指标
@@ -233,6 +239,66 @@ func (qb *BunQueryBuilder) buildSelectParts(ast *QueryAST) []string {
 	}
 
 	return parts
+}
+
+// buildGroupByParts 构建 GROUP BY 字段列表。
+// 调用场景：增强 QueryAST 后，时间粒度等结构化维度需要与 SELECT 子句一致的底层表达式，而不是直接按别名分组。
+func (qb *BunQueryBuilder) buildGroupByParts(ast *QueryAST) []string {
+	if len(ast.DimensionExprs) == 0 {
+		groupByParts := make([]string, len(ast.Dimensions))
+		for i, dim := range ast.Dimensions {
+			groupByParts[i] = safeIdentifier(dim)
+		}
+		return groupByParts
+	}
+
+	groupByParts := make([]string, 0, len(ast.DimensionExprs))
+	for _, dim := range ast.DimensionExprs {
+		groupByParts = append(groupByParts, qb.renderDimensionGroupBy(dim))
+	}
+	return groupByParts
+}
+
+// renderDimensionSelect 渲染维度 SELECT 片段。
+// 调用场景：普通维度直接输出字段，带时间粒度的维度输出方言表达式并附带稳定别名。
+func (qb *BunQueryBuilder) renderDimensionSelect(dim DimensionExprAST) string {
+	groupExpr := qb.renderDimensionGroupBy(dim)
+	if dim.Alias != "" && dim.Alias != dim.Field {
+		return fmt.Sprintf("%s AS %s", groupExpr, safeIdentifier(dim.Alias))
+	}
+	if dim.Granularity != "" {
+		return fmt.Sprintf("%s AS %s", groupExpr, safeIdentifier(dim.Alias))
+	}
+	return groupExpr
+}
+
+// renderDimensionGroupBy 渲染维度 GROUP BY 表达式。
+// 调用场景：按方言处理时间粒度；其余场景退化为安全字段标识符。
+func (qb *BunQueryBuilder) renderDimensionGroupBy(dim DimensionExprAST) string {
+	fieldExpr := dim.FieldExpr
+	if fieldExpr == "" {
+		fieldExpr = dim.Field
+	}
+
+	if dim.Granularity == "" {
+		return safeIdentifier(fieldExpr)
+	}
+
+	safeField := safeIdentifier(fieldExpr)
+	switch qb.dialect {
+	case DialectPostgreSQL:
+		return fmt.Sprintf("DATE_TRUNC('%s', %s)", dim.Granularity, safeField)
+	case DialectMySQL:
+		if dim.Granularity == "day" {
+			return fmt.Sprintf("DATE(%s)", safeField)
+		}
+	case DialectClickHouse:
+		if dim.Granularity == "day" {
+			return fmt.Sprintf("toDate(%s)", safeField)
+		}
+	}
+
+	return safeField
 }
 
 // buildWhereParts 构建 WHERE 部分，使用参数化查询
@@ -304,7 +370,7 @@ func safeIdentifier(name string) string {
 	// 移除可能导致 SQL 注入的字符
 	name = strings.TrimSpace(name)
 	// 检查是否包含危险字符
-	if strings.ContainsAny(name, ";'\"`-") {
+	if strings.ContainsAny(name, ";'\"-") {
 		return "_invalid_identifier"
 	}
 	return name

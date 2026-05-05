@@ -25,10 +25,12 @@ import {
 import {
   Button,
   Card,
+  ColorPicker,
   Divider,
   Drawer,
   Empty,
   Input,
+  InputNumber,
   Layout,
   Modal,
   message,
@@ -42,11 +44,15 @@ import ReactECharts from 'echarts-for-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ChartQueryAggregation, ChartQueryRequest } from '../api';
+import {
+  chartDefinitions,
+  normalizeQueryConfigForChartType,
+} from '../components/ChartBuilder/chartDefinitions';
 import DraggableField, { FieldDragPreview } from '../components/ChartBuilder/DraggableField';
 import FilterBuilder from '../components/ChartBuilder/FilterBuilder';
 import QueryConfigRow from '../components/ChartBuilder/QueryConfigRow';
 import TableChart from '../components/ChartBuilder/TableChart';
-import { ChartConfig, ChartField, useStore } from '../store';
+import { ChartConfig, ChartField, ChartQueryOptions, ChartStyleConfig, useStore } from '../store';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -83,13 +89,59 @@ const getDraggedField = (value: unknown): ChartField | null => {
   return value.field;
 };
 
+/**
+ * 按字段 id 去重，同时保留第一次出现的顺序。
+ * 调用场景：右侧配置面板会聚合多个字段组的已选字段，同一字段可能出现在多个组里。
+ * 主要逻辑：使用 Set 过滤重复 id，避免 React 列表出现重复 key，同时不影响查询配置原始分组。
+ */
+const dedupeFieldsById = (fields: ChartField[]): ChartField[] => {
+  const seen = new Set<string>();
+  return fields.filter((field) => {
+    if (seen.has(field.id)) {
+      return false;
+    }
+    seen.add(field.id);
+    return true;
+  });
+};
+
+/**
+ * 按当前图表定义裁剪字段组，只保留当前类型实际会渲染的那部分配置。
+ * 调用场景：切换图表类型后，queryConfig 可能还残留上一个图表的额外组；构造查询请求时不能把隐藏组一并发送。
+ * 主要逻辑：分别统计当前定义需要的维度组/指标组数量，再按顺序截取对应 groups。
+ */
+const getActiveFieldGroups = (chartType: ChartConfig['chartType'], queryConfig: QueryConfig) => {
+  const definition = chartDefinitions[chartType];
+  const dimensionGroupCount = definition.fieldGroups.filter(
+    (group) => group.kind === 'dimension'
+  ).length;
+  const metricGroupCount = definition.fieldGroups.filter((group) => group.kind === 'metric').length;
+
+  return {
+    dimensionGroups: queryConfig.dimensionGroups.slice(0, dimensionGroupCount),
+    metricGroups: queryConfig.metricGroups.slice(0, metricGroupCount),
+  };
+};
+
 interface ChartCanvasProps {
   config: ChartConfig;
   data: any[];
   loading: boolean;
+  dimensionLabels: Record<string, string>;
+  metricAliases: Record<string, string>;
+  metricUnits: Record<string, string>;
+  chartStyle: ChartStyleConfig;
 }
 
-const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
+const ChartCanvas: React.FC<ChartCanvasProps> = ({
+  config,
+  data,
+  loading,
+  dimensionLabels,
+  metricAliases,
+  metricUnits,
+  chartStyle,
+}) => {
   const getChartOption = useCallback(() => {
     const { queryConfig, chartBuilderFields } = useStore.getState();
     const fieldMap = new Map(chartBuilderFields.map((f) => [f.id, f]));
@@ -101,6 +153,16 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
 
     const metricIds = queryConfig.metricGroups.flatMap((g) => g.fields);
     const metricFields = metricIds.map((id) => fieldMap.get(id)?.name).filter(Boolean) as string[];
+    const metricNameMap = new Map(
+      metricIds.map((id) => {
+        const field = fieldMap.get(id);
+        const baseName = field?.name || id;
+        const alias = metricAliases[id];
+        const unit = metricUnits[id];
+        const displayName = alias || baseName;
+        return [baseName, unit ? `${displayName} (${unit})` : displayName];
+      })
+    );
 
     // scatter only needs 2 metrics, dims are optional
     const isScatter = config.chartType === 'scatter';
@@ -143,6 +205,7 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
           xAxis: {
             type: 'category',
             data: xAxisData,
+            name: dimensionLabels[queryConfig.dimensionGroups[0]?.fields[0] || ''] || xAxisField,
             axisLabel: {
               rotate: xAxisData.length > 10 ? 30 : 0,
               formatter: (val: string) => {
@@ -155,11 +218,13 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
             type: 'value',
           },
           series: effectiveSeries.map((yField) => ({
-            name: yField,
+            name: metricNameMap.get(yField) || yField,
             type: 'line',
+            smooth: chartStyle.smooth,
             connectNulls: true,
             data: data.map((item) => item[yField] ?? null),
           })),
+          color: chartStyle.colors.length > 0 ? chartStyle.colors : undefined,
         };
 
       case 'bar':
@@ -177,10 +242,11 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
             type: 'value',
           },
           series: effectiveSeries.map((yField) => ({
-            name: yField,
+            name: metricNameMap.get(yField) || yField,
             type: 'bar',
             data: data.map((item) => item[yField] ?? null),
           })),
+          color: chartStyle.colors.length > 0 ? chartStyle.colors : undefined,
         };
 
       case 'pie': {
@@ -216,6 +282,7 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
               },
             },
           ],
+          color: chartStyle.colors.length > 0 ? chartStyle.colors : undefined,
         };
       }
 
@@ -234,12 +301,14 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
             type: 'value',
           },
           series: effectiveSeries.map((yField) => ({
-            name: yField,
+            name: metricNameMap.get(yField) || yField,
             type: 'line',
             areaStyle: {},
+            smooth: chartStyle.smooth,
             connectNulls: true,
             data: data.map((item) => item[yField] ?? null),
           })),
+          color: chartStyle.colors.length > 0 ? chartStyle.colors : undefined,
         };
 
       case 'scatter':
@@ -257,7 +326,15 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ config, data, loading }) => {
       default:
         return null;
     }
-  }, [config, data]);
+  }, [
+    chartStyle.colors,
+    chartStyle.smooth,
+    config,
+    data,
+    dimensionLabels,
+    metricAliases,
+    metricUnits,
+  ]);
 
   const chartOption = getChartOption();
 
@@ -343,19 +420,46 @@ const FieldListPanel: React.FC<FieldListPanelProps> = ({ fields, loading }) => {
 interface ConfigPanelProps {
   config: ChartConfig;
   onConfigChange: (config: Partial<ChartConfig>) => void;
+  dimensionLabels: Record<string, string>;
+  metricUnits: Record<string, string>;
+  metricFormats: Record<string, string>;
+  chartStyle: ChartStyleConfig;
+  chartQueryOptions: ChartQueryOptions;
+  dimensionFields: ChartField[];
+  metricFields: ChartField[];
+  onDimensionLabelChange: (fieldId: string, label: string) => void;
+  onMetricUnitChange: (fieldId: string, unit: string) => void;
+  onMetricFormatChange: (fieldId: string, format: string) => void;
+  onChartStyleChange: (style: Partial<ChartStyleConfig>) => void;
+  onChartQueryOptionsChange: (options: Partial<ChartQueryOptions>) => void;
 }
 
 const chartTypeOptions = [
-  { type: 'table', icon: <TableOutlined />, label: '表格' },
-  { type: 'bar', icon: <BarChartOutlined />, label: '柱状图' },
-  { type: 'line', icon: <LineChartOutlined />, label: '折线图' },
-  { type: 'pie', icon: <PieChartOutlined />, label: '饼图' },
-  { type: 'area', icon: <AreaChartOutlined />, label: '面积图' },
-  { type: 'scatter', icon: <DotChartOutlined />, label: '散点图' },
-  { type: 'pivot', icon: <AppstoreOutlined />, label: '透视表' },
+  { type: 'table', icon: <TableOutlined />, label: chartDefinitions.table.label },
+  { type: 'bar', icon: <BarChartOutlined />, label: chartDefinitions.bar.label },
+  { type: 'line', icon: <LineChartOutlined />, label: chartDefinitions.line.label },
+  { type: 'pie', icon: <PieChartOutlined />, label: chartDefinitions.pie.label },
+  { type: 'area', icon: <AreaChartOutlined />, label: chartDefinitions.area.label },
+  { type: 'scatter', icon: <DotChartOutlined />, label: chartDefinitions.scatter.label },
+  { type: 'pivot', icon: <AppstoreOutlined />, label: chartDefinitions.pivot.label },
 ] as const;
 
-const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onConfigChange }) => {
+const ConfigPanel: React.FC<ConfigPanelProps> = ({
+  config,
+  onConfigChange,
+  dimensionLabels,
+  metricUnits,
+  metricFormats,
+  chartStyle,
+  chartQueryOptions,
+  dimensionFields,
+  metricFields,
+  onDimensionLabelChange,
+  onMetricUnitChange,
+  onMetricFormatChange,
+  onChartStyleChange,
+  onChartQueryOptionsChange,
+}) => {
   return (
     <div>
       <Card title="可视化类型" size="small" style={{ marginBottom: 12 }}>
@@ -385,8 +489,100 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onConfigChange }) => 
               placeholder="输入图表标题"
             />
           </div>
+
+          <div>
+            <Text strong>平滑曲线</Text>
+            <div style={{ marginTop: 4 }}>
+              <Switch
+                checked={chartStyle.smooth}
+                onChange={(checked) => onChartStyleChange({ smooth: checked })}
+                disabled={config.chartType !== 'line' && config.chartType !== 'area'}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Text strong>主色</Text>
+            <div style={{ marginTop: 4 }}>
+              <ColorPicker
+                value={chartStyle.colors[0] || '#1677ff'}
+                onChange={(color) => onChartStyleChange({ colors: [color.toHexString()] })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Text strong>表格行尺寸</Text>
+            <Select
+              style={{ width: '100%', marginTop: 4 }}
+              value={chartStyle.tableRowSize}
+              onChange={(value) => onChartStyleChange({ tableRowSize: value })}
+              options={[
+                { value: 'small', label: '紧凑' },
+                { value: 'middle', label: '默认' },
+                { value: 'large', label: '宽松' },
+              ]}
+            />
+          </div>
+
+          {config.chartType === 'pie' && (
+            <div>
+              <Text strong>饼图“其他”阈值 (%)</Text>
+              <InputNumber
+                min={0}
+                max={100}
+                style={{ width: '100%', marginTop: 4 }}
+                value={chartQueryOptions.pieMergeOtherBelowRatio ?? 0}
+                onChange={(value) =>
+                  onChartQueryOptionsChange({ pieMergeOtherBelowRatio: Number(value ?? 0) })
+                }
+              />
+            </div>
+          )}
         </Space>
       </Card>
+
+      {dimensionFields.length > 0 && (
+        <Card title="维度属性" size="small" style={{ marginBottom: 12 }}>
+          <Space direction="vertical" style={{ width: '100%' }} size="small">
+            {dimensionFields.map((field) => (
+              <div key={field.id}>
+                <Text strong>{field.name}</Text>
+                <Input
+                  style={{ width: '100%', marginTop: 4 }}
+                  value={dimensionLabels[field.id] || ''}
+                  onChange={(e) => onDimensionLabelChange(field.id, e.target.value)}
+                  placeholder="显示名称"
+                />
+              </div>
+            ))}
+          </Space>
+        </Card>
+      )}
+
+      {metricFields.length > 0 && (
+        <Card title="指标属性" size="small" style={{ marginBottom: 12 }}>
+          <Space direction="vertical" style={{ width: '100%' }} size="small">
+            {metricFields.map((field) => (
+              <div key={field.id}>
+                <Text strong>{field.name}</Text>
+                <Input
+                  style={{ width: '100%', marginTop: 4, marginBottom: 4 }}
+                  value={metricUnits[field.id] || ''}
+                  onChange={(e) => onMetricUnitChange(field.id, e.target.value)}
+                  placeholder="单位，例如 元 / %"
+                />
+                <Input
+                  style={{ width: '100%' }}
+                  value={metricFormats[field.id] || ''}
+                  onChange={(e) => onMetricFormatChange(field.id, e.target.value)}
+                  placeholder="格式，例如 0,0.00"
+                />
+              </div>
+            ))}
+          </Space>
+        </Card>
+      )}
 
       <Card title="当前配置" size="small" style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 12 }}>
@@ -445,10 +641,27 @@ const ChartBuilder: React.FC = () => {
     reorderMetricField,
     setMetricAggregation,
     setMetricAlias,
+    setMetricAggregations,
+    setMetricAliases,
+    setDimensionLabel,
+    setDimensionLabels,
+    setMetricUnit,
+    setMetricUnits,
+    setMetricFormat,
+    setMetricFormats,
+    setChartStyle,
+    setChartStyleState,
+    setChartQueryOptions,
+    setChartQueryOptionsState,
     autoQuery,
     toggleAutoQuery,
+    dimensionLabels,
     metricAggregations,
     metricAliases,
+    metricUnits,
+    metricFormats,
+    chartStyle,
+    chartQueryOptions,
     executeChartQuery,
     tablePagination,
     tableColumns,
@@ -509,16 +722,17 @@ const ChartBuilder: React.FC = () => {
 
       const overData = over.data.current;
       const dropZoneType = overData?.type as 'dimension' | 'metric' | 'filter';
+      const groupIndex = typeof overData?.groupIndex === 'number' ? overData.groupIndex : 0;
 
       if (dropZoneType === 'dimension') {
         if (field.type === 'dimension') {
-          addDimensionField(field);
+          addDimensionField(field, groupIndex);
         } else {
           message.warning('请将指标拖入指标区域');
         }
       } else if (dropZoneType === 'metric') {
         if (field.type === 'metric') {
-          addMetricField(field);
+          addMetricField(field, groupIndex);
         } else {
           message.warning('请将维度拖入维度区域');
         }
@@ -547,11 +761,131 @@ const ChartBuilder: React.FC = () => {
     return metricIds.map((id) => fieldMap.get(id)).filter(Boolean) as ChartField[];
   }, [queryConfig.metricGroups, chartBuilderFields]);
 
+  /**
+   * 按维度组索引读取字段，供定义驱动的查询配置面板复用。
+   * 调用场景：一个图表类型需要多个维度组时，例如透视表的行/列维度。
+   * 主要逻辑：从指定 group 的 field id 列表映射回完整字段对象。
+   */
+  const getDimensionFieldsByGroup = useCallback(
+    (groupIndex: number) => {
+      const fieldIds = queryConfig.dimensionGroups[groupIndex]?.fields || [];
+      const fieldMap = new Map(chartBuilderFields.map((f) => [f.id, f]));
+      return fieldIds.map((id) => fieldMap.get(id)).filter(Boolean) as ChartField[];
+    },
+    [queryConfig.dimensionGroups, chartBuilderFields]
+  );
+
+  /**
+   * 按指标组索引读取字段，供定义驱动的查询配置面板复用。
+   * 调用场景：一个图表类型需要多个指标组时，例如散点图的 X/Y 指标。
+   * 主要逻辑：从指定 group 的 field id 列表映射回完整字段对象。
+   */
+  const getMetricFieldsByGroup = useCallback(
+    (groupIndex: number) => {
+      const fieldIds = queryConfig.metricGroups[groupIndex]?.fields || [];
+      const fieldMap = new Map(chartBuilderFields.map((f) => [f.id, f]));
+      return fieldIds.map((id) => fieldMap.get(id)).filter(Boolean) as ChartField[];
+    },
+    [queryConfig.metricGroups, chartBuilderFields]
+  );
+
+  /**
+   * 切换图表类型时同步补齐最小字段组数量，避免定义驱动 UI 缺少必要槽位。
+   * 调用场景：用户点击右侧图表类型按钮。
+   * 主要逻辑：先更新 chartType，再根据新定义对 queryConfig 做最小补齐。
+   */
+  const handleChartTypeChange = useCallback(
+    (chartType: ChartConfig['chartType']) => {
+      setChartBuilderConfig({ chartType });
+      setQueryConfig(normalizeQueryConfigForChartType(chartType, useStore.getState().queryConfig));
+    },
+    [setChartBuilderConfig, setQueryConfig]
+  );
+
+  /**
+   * 根据当前图表定义动态渲染字段组配置行。
+   * 调用场景：桌面端和移动端的查询配置区域共用。
+   * 主要逻辑：把图表定义中的组标签、空态文案映射到 QueryConfigRow。
+   */
+  const renderQueryConfigRows = useCallback(() => {
+    const definition = chartDefinitions[chartBuilderConfig.chartType];
+
+    return definition.fieldGroups.map((group, index) => {
+      const fields =
+        group.kind === 'dimension'
+          ? getDimensionFieldsByGroup(index)
+          : getMetricFieldsByGroup(index);
+
+      return (
+        <QueryConfigRow
+          key={`${chartBuilderConfig.chartType}-${group.id}`}
+          rowType={group.kind}
+          groupIndex={index}
+          label={group.label}
+          emptyText={group.emptyText}
+          fields={fields}
+          availableFields={chartBuilderFields}
+          aggregations={metricAggregations}
+          aliases={metricAliases}
+          onRemoveField={(fieldId) =>
+            group.kind === 'dimension'
+              ? removeDimensionField(fieldId, index)
+              : removeMetricField(fieldId, index)
+          }
+          onAggregationChange={setMetricAggregation}
+          onAddField={(field) =>
+            group.kind === 'dimension'
+              ? addDimensionField(field, index)
+              : addMetricField(field, index)
+          }
+          onReorderField={(oldIndex, newIndex) =>
+            group.kind === 'dimension'
+              ? reorderDimensionField(oldIndex, newIndex, index)
+              : reorderMetricField(oldIndex, newIndex, index)
+          }
+          onOpenSettings={
+            group.kind === 'metric'
+              ? (field) => {
+                  const alias = prompt('输入字段别名:', field.name);
+                  if (alias !== null) {
+                    setMetricAlias(field.id, alias);
+                  }
+                }
+              : undefined
+          }
+        />
+      );
+    });
+  }, [
+    addDimensionField,
+    addMetricField,
+    chartBuilderConfig.chartType,
+    chartBuilderFields,
+    getDimensionFieldsByGroup,
+    getMetricFieldsByGroup,
+    metricAggregations,
+    metricAliases,
+    removeDimensionField,
+    removeMetricField,
+    reorderDimensionField,
+    reorderMetricField,
+    setMetricAggregation,
+    setMetricAlias,
+  ]);
+
   const buildChartQueryRequest = useCallback((): ChartQueryRequest | null => {
     if (!selectedDatasetId) return null;
 
-    const dimensionFields = getDimensionFields();
-    const metricFields = getMetricFields();
+    const activeGroups = getActiveFieldGroups(chartBuilderConfig.chartType, queryConfig);
+    const fieldMap = new Map(chartBuilderFields.map((f) => [f.id, f]));
+    const dimensionFields = activeGroups.dimensionGroups
+      .flatMap((group) => group.fields)
+      .map((id) => fieldMap.get(id))
+      .filter((f): f is ChartField => f !== undefined);
+    const metricFields = activeGroups.metricGroups
+      .flatMap((group) => group.fields)
+      .map((id) => fieldMap.get(id))
+      .filter((f): f is ChartField => f !== undefined);
 
     if (dimensionFields.length === 0 && metricFields.length === 0) {
       return null;
@@ -581,6 +915,14 @@ const ChartBuilder: React.FC = () => {
       dims,
       metrics,
       filters,
+      config:
+        chartBuilderConfig.chartType === 'pie'
+          ? {
+              query_options: {
+                pie_merge_other_below_ratio: chartQueryOptions.pieMergeOtherBelowRatio,
+              },
+            }
+          : undefined,
       sort: queryConfig.sort
         ? { field: queryConfig.sort.field, order: queryConfig.sort.order }
         : undefined,
@@ -594,12 +936,10 @@ const ChartBuilder: React.FC = () => {
     };
   }, [
     selectedDatasetId,
-    getDimensionFields,
-    getMetricFields,
     metricAggregations,
     metricAliases,
-    queryConfig.filters,
-    queryConfig.sort,
+    chartQueryOptions.pieMergeOtherBelowRatio,
+    queryConfig,
     chartBuilderConfig.chartType,
     tablePagination.page,
     tablePagination.pageSize,
@@ -669,13 +1009,17 @@ const ChartBuilder: React.FC = () => {
 
     const state = useStore.getState();
     const fieldMap = new Map(state.chartBuilderFields.map((f) => [f.id, f]));
+    const activeGroups = getActiveFieldGroups(
+      state.chartBuilderConfig.chartType,
+      state.queryConfig
+    );
 
-    const dimIds = state.queryConfig.dimensionGroups.flatMap((g) => g.fields);
+    const dimIds = activeGroups.dimensionGroups.flatMap((g) => g.fields);
     const dimFields = dimIds
       .map((id) => fieldMap.get(id))
       .filter((f): f is ChartField => f !== undefined);
 
-    const metIds = state.queryConfig.metricGroups.flatMap((g) => g.fields);
+    const metIds = activeGroups.metricGroups.flatMap((g) => g.fields);
     const metFields = metIds
       .map((id) => fieldMap.get(id))
       .filter((f): f is ChartField => f !== undefined);
@@ -691,6 +1035,14 @@ const ChartBuilder: React.FC = () => {
         agg: (state.metricAggregations[f.id] || 'sum') as ChartQueryAggregation,
         alias: state.metricAliases[f.id] || f.name,
       })),
+      config:
+        state.chartBuilderConfig.chartType === 'pie'
+          ? {
+              query_options: {
+                pie_merge_other_below_ratio: state.chartQueryOptions.pieMergeOtherBelowRatio,
+              },
+            }
+          : undefined,
       filters: state.queryConfig.filters.map((f) => {
         const field = state.chartBuilderFields.find((field) => field.id === f.field);
         return {
@@ -714,13 +1066,14 @@ const ChartBuilder: React.FC = () => {
     if (!selectedDatasetId) return;
 
     const fieldMap = new Map(chartBuilderFields.map((f) => [f.id, f]));
+    const activeGroups = getActiveFieldGroups(chartBuilderConfig.chartType, queryConfig);
 
-    const dimIds = queryConfig.dimensionGroups.flatMap((g) => g.fields);
+    const dimIds = activeGroups.dimensionGroups.flatMap((g) => g.fields);
     const dimFields = dimIds
       .map((id) => fieldMap.get(id))
       .filter((f): f is ChartField => f !== undefined);
 
-    const metIds = queryConfig.metricGroups.flatMap((g) => g.fields);
+    const metIds = activeGroups.metricGroups.flatMap((g) => g.fields);
     const metFields = metIds
       .map((id) => fieldMap.get(id))
       .filter((f): f is ChartField => f !== undefined);
@@ -736,6 +1089,14 @@ const ChartBuilder: React.FC = () => {
         agg: (metricAggregations[f.id] || 'sum') as ChartQueryAggregation,
         alias: metricAliases[f.id] || f.name,
       })),
+      config:
+        chartBuilderConfig.chartType === 'pie'
+          ? {
+              query_options: {
+                pie_merge_other_below_ratio: chartQueryOptions.pieMergeOtherBelowRatio,
+              },
+            }
+          : undefined,
       filters: queryConfig.filters.map((f) => {
         const field = chartBuilderFields.find((field) => field.id === f.field);
         return {
@@ -760,6 +1121,7 @@ const ChartBuilder: React.FC = () => {
     queryConfig,
     metricAggregations,
     metricAliases,
+    chartQueryOptions.pieMergeOtherBelowRatio,
     chartBuilderFields,
     tablePagination.page,
     tablePagination.pageSize,
@@ -783,6 +1145,34 @@ const ChartBuilder: React.FC = () => {
             if (config.queryConfig) {
               setQueryConfig(config.queryConfig);
             }
+
+            if (config.metricAliases) {
+              setMetricAliases(config.metricAliases);
+            }
+
+            if (config.metricAggregations) {
+              setMetricAggregations(config.metricAggregations);
+            }
+
+            if (config.dimensionLabels) {
+              setDimensionLabels(config.dimensionLabels);
+            }
+
+            if (config.metricUnits) {
+              setMetricUnits(config.metricUnits);
+            }
+
+            if (config.metricFormats) {
+              setMetricFormats(config.metricFormats);
+            }
+
+            if (config.chartStyle) {
+              setChartStyleState(config.chartStyle);
+            }
+
+            if (config.chartQueryOptions) {
+              setChartQueryOptionsState(config.chartQueryOptions);
+            }
           } catch (_e) {
             setChartBuilderConfig({
               chartType: chart.chart_type as
@@ -803,7 +1193,19 @@ const ChartBuilder: React.FC = () => {
     };
 
     loadChartConfig();
-  }, [editingChartId, selectedDatasetId, setChartBuilderConfig, setQueryConfig]);
+  }, [
+    editingChartId,
+    selectedDatasetId,
+    setChartBuilderConfig,
+    setMetricAggregations,
+    setMetricAliases,
+    setDimensionLabels,
+    setMetricUnits,
+    setMetricFormats,
+    setChartStyleState,
+    setChartQueryOptionsState,
+    setQueryConfig,
+  ]);
 
   const handleSave = async () => {
     if (!selectedDatasetId) {
@@ -815,6 +1217,13 @@ const ChartBuilder: React.FC = () => {
       const configJson = JSON.stringify({
         ...chartBuilderConfig,
         queryConfig,
+        dimensionLabels,
+        metricAggregations,
+        metricAliases,
+        metricUnits,
+        metricFormats,
+        chartStyle,
+        chartQueryOptions,
       });
 
       if (editingChartId) {
@@ -861,15 +1270,32 @@ const ChartBuilder: React.FC = () => {
           data={chartData}
           loading={chartDataLoading}
           columns={tableColumns}
+          columnLabels={Object.fromEntries(
+            getDimensionFields().map((field) => [
+              field.name,
+              dimensionLabels[field.id] || field.name,
+            ])
+          )}
           dimensionNames={dimensionFields.map((f) => f.name)}
           metricNames={metricFields.map((f) => f.name)}
+          rowSize={chartStyle.tableRowSize}
           pagination={chartBuilderConfig.chartType === 'table' ? tablePagination : undefined}
           onPageChange={chartBuilderConfig.chartType === 'table' ? handlePageChange : undefined}
           onSortChange={chartBuilderConfig.chartType === 'table' ? handleSortChange : undefined}
         />
       );
     }
-    return <ChartCanvas config={chartBuilderConfig} data={chartData} loading={chartDataLoading} />;
+    return (
+      <ChartCanvas
+        config={chartBuilderConfig}
+        data={chartData}
+        loading={chartDataLoading}
+        dimensionLabels={dimensionLabels}
+        metricAliases={metricAliases}
+        metricUnits={metricUnits}
+        chartStyle={chartStyle}
+      />
+    );
   };
 
   const renderHeader = () => {
@@ -1022,33 +1448,7 @@ const ChartBuilder: React.FC = () => {
         >
           <Card title="查询配置" size="small" style={{ flex: '0 0 auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <QueryConfigRow
-                rowType="dimension"
-                fields={getDimensionFields()}
-                availableFields={chartBuilderFields}
-                onRemoveField={removeDimensionField}
-                onAggregationChange={setMetricAggregation}
-                onAddField={(field) => addDimensionField(field)}
-                onReorderField={reorderDimensionField}
-              />
-
-              <QueryConfigRow
-                rowType="metric"
-                fields={getMetricFields()}
-                availableFields={chartBuilderFields}
-                aggregations={metricAggregations}
-                aliases={metricAliases}
-                onRemoveField={removeMetricField}
-                onAggregationChange={setMetricAggregation}
-                onAddField={(field) => addMetricField(field)}
-                onReorderField={reorderMetricField}
-                onOpenSettings={(field) => {
-                  const alias = prompt('输入字段别名:', field.name);
-                  if (alias !== null) {
-                    setMetricAlias(field.id, alias);
-                  }
-                }}
-              />
+              {renderQueryConfigRows()}
 
               <FilterBuilder
                 fields={chartBuilderFields}
@@ -1089,33 +1489,7 @@ const ChartBuilder: React.FC = () => {
         >
           <Card title="查询配置" size="small" style={{ flex: '0 0 auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <QueryConfigRow
-                rowType="dimension"
-                fields={getDimensionFields()}
-                availableFields={chartBuilderFields}
-                onRemoveField={removeDimensionField}
-                onAggregationChange={setMetricAggregation}
-                onAddField={(field) => addDimensionField(field)}
-                onReorderField={reorderDimensionField}
-              />
-
-              <QueryConfigRow
-                rowType="metric"
-                fields={getMetricFields()}
-                availableFields={chartBuilderFields}
-                aggregations={metricAggregations}
-                aliases={metricAliases}
-                onRemoveField={removeMetricField}
-                onAggregationChange={setMetricAggregation}
-                onAddField={(field) => addMetricField(field)}
-                onReorderField={reorderMetricField}
-                onOpenSettings={(field) => {
-                  const alias = prompt('输入字段别名:', field.name);
-                  if (alias !== null) {
-                    setMetricAlias(field.id, alias);
-                  }
-                }}
-              />
+              {renderQueryConfigRows()}
 
               <FilterBuilder
                 fields={chartBuilderFields}
@@ -1136,7 +1510,28 @@ const ChartBuilder: React.FC = () => {
           width={260}
           style={{ background: '#fff', padding: '12px', borderLeft: '1px solid #f0f0f0' }}
         >
-          <ConfigPanel config={chartBuilderConfig} onConfigChange={setChartBuilderConfig} />
+          <ConfigPanel
+            config={chartBuilderConfig}
+            dimensionLabels={dimensionLabels}
+            metricUnits={metricUnits}
+            metricFormats={metricFormats}
+            chartStyle={chartStyle}
+            chartQueryOptions={chartQueryOptions}
+            dimensionFields={dedupeFieldsById(getDimensionFields())}
+            metricFields={dedupeFieldsById(getMetricFields())}
+            onDimensionLabelChange={setDimensionLabel}
+            onMetricUnitChange={setMetricUnit}
+            onMetricFormatChange={setMetricFormat}
+            onChartStyleChange={setChartStyle}
+            onChartQueryOptionsChange={setChartQueryOptions}
+            onConfigChange={(config) => {
+              if (config.chartType) {
+                handleChartTypeChange(config.chartType);
+                return;
+              }
+              setChartBuilderConfig(config);
+            }}
+          />
         </Sider>
       </Layout>
     );
@@ -1173,7 +1568,28 @@ const ChartBuilder: React.FC = () => {
           open={rightDrawerOpen}
           width={300}
         >
-          <ConfigPanel config={chartBuilderConfig} onConfigChange={setChartBuilderConfig} />
+          <ConfigPanel
+            config={chartBuilderConfig}
+            dimensionLabels={dimensionLabels}
+            metricUnits={metricUnits}
+            metricFormats={metricFormats}
+            chartStyle={chartStyle}
+            chartQueryOptions={chartQueryOptions}
+            dimensionFields={dedupeFieldsById(getDimensionFields())}
+            metricFields={dedupeFieldsById(getMetricFields())}
+            onDimensionLabelChange={setDimensionLabel}
+            onMetricUnitChange={setMetricUnit}
+            onMetricFormatChange={setMetricFormat}
+            onChartStyleChange={setChartStyle}
+            onChartQueryOptionsChange={setChartQueryOptions}
+            onConfigChange={(config) => {
+              if (config.chartType) {
+                handleChartTypeChange(config.chartType);
+                return;
+              }
+              setChartBuilderConfig(config);
+            }}
+          />
         </Drawer>
       </Layout>
       <DragOverlay>

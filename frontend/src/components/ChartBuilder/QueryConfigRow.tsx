@@ -5,6 +5,12 @@ import FieldDropZone, { DropZoneType } from './FieldDropZone';
 export interface QueryConfigRowProps {
   /** 行类型 */
   rowType: DropZoneType;
+  /** 当前字段组索引 */
+  groupIndex?: number;
+  /** 自定义标签 */
+  label?: string;
+  /** 自定义空态文案 */
+  emptyText?: string;
   /** 当前字段列表 */
   fields: ChartField[];
   /** 所有可用字段列表 */
@@ -33,6 +39,9 @@ const ROW_CONFIG: Record<DropZoneType, { label: string; color: string }> = {
 
 const QueryConfigRow: React.FC<QueryConfigRowProps> = ({
   rowType,
+  groupIndex = 0,
+  label,
+  emptyText,
   fields,
   availableFields,
   aggregations,
@@ -44,6 +53,7 @@ const QueryConfigRow: React.FC<QueryConfigRowProps> = ({
   onReorderField,
 }) => {
   const config = ROW_CONFIG[rowType];
+  const displayLabel = label || config.label;
 
   return (
     <div
@@ -63,12 +73,13 @@ const QueryConfigRow: React.FC<QueryConfigRowProps> = ({
           fontSize: '13px',
         }}
       >
-        {config.label}
+        {displayLabel}
       </div>
       <div style={{ flex: 1 }}>
         <FieldDropZone
           zoneType={rowType}
-          label={config.label}
+          label={displayLabel}
+          groupIndex={groupIndex}
           fields={fields}
           availableFields={availableFields}
           aggregations={aggregations}
@@ -78,6 +89,7 @@ const QueryConfigRow: React.FC<QueryConfigRowProps> = ({
           onOpenSettings={onOpenSettings}
           onAddField={onAddField}
           onReorderField={onReorderField}
+          emptyText={emptyText}
         />
       </div>
     </div>

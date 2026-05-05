@@ -296,7 +296,9 @@ Chart 模块需要将 `ChartSpec` 转换为 Query 模块可理解的 `QuerySpec`
 兼容期内：
 
 - 服务端继续接受旧协议。
-- 服务端内部当前已落地 `旧请求 -> QuerySpec -> QueryPlanner -> 旧 executor 请求` 的兼容链路。
+- 服务端内部当前已落地 `旧请求 -> QuerySpec -> QueryPlanner -> 旧 executor 请求` 的兼容链路，并已新增 `QuerySpec -> QueryAST` 的第一阶段规划能力。
+- `chartService.Query` 当前会在内部构造 `PlannedAST` 并传递给 `query.Executor`，executor 优先消费 AST 生成 SQL；旧的平铺参数仍保留为兼容回退路径。
+- 当前 `QueryAST` 已支持结构化维度/指标元信息、`limit`，以及日期维度 `day` 粒度的 PostgreSQL / MySQL / ClickHouse SQL 生成。
 - 服务端内部仍未直接接受 `chart_spec` 作为正式对外请求字段，`ChartSpec` 目前主要用于内部建模和演进设计。
 - 服务端继续保留顶层 `select_sql` / `count_sql`，同时逐步补充 `data.sql`。
 - 文档中的旧协议视为“当前兼容协议”，新协议视为“目标契约协议”。

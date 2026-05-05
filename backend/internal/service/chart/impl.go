@@ -169,6 +169,7 @@ func (s *chartService) Query(ctx context.Context, req *entity.ChartQueryRequest)
 	executor := s.executorFactory(conn, dataset, dsModel)
 	querySpec := buildQuerySpecFromEntityRequest(req)
 	plannedQuery := query.NewQueryPlanner().Plan(querySpec)
+	plannedAST := query.NewQueryPlanner().PlanAST(getPlannerSource(dataset), getPlannerSourceType(dataset), querySpec)
 
 	queryReq := &query.ChartQueryRequest{
 		DatasetID:  req.DatasetID,
@@ -178,6 +179,7 @@ func (s *chartService) Query(ctx context.Context, req *entity.ChartQueryRequest)
 		Filters:    plannedQuery.Filters,
 		Pagination: plannedQuery.Pagination,
 		Sort:       plannedQuery.Sort,
+		PlannedAST: plannedAST,
 	}
 
 	result, err := executor.Execute(ctx, queryReq)
@@ -190,6 +192,27 @@ func (s *chartService) Query(ctx context.Context, req *entity.ChartQueryRequest)
 		SelectSQL: result.Select,
 		CountSQL:  result.Count,
 	}, nil
+}
+
+// getPlannerSource 获取 QueryPlanner 生成 AST 所需的数据源。
+// 调用场景：service 层在 executor 执行前先规划 QueryAST，复用与 executor 相同的基础查询来源判定。
+func getPlannerSource(dataset *model.Dataset) string {
+	if dataset.QueryType == "sql" && dataset.QuerySQL.Valid {
+		return dataset.QuerySQL.String
+	}
+	if dataset.TableName.Valid {
+		return dataset.TableName.String
+	}
+	return ""
+}
+
+// getPlannerSourceType 获取 QueryPlanner 生成 AST 所需的 source type。
+// 调用场景：与 getPlannerSource 配套，保证 AST 规划与 executor 实际查询源一致。
+func getPlannerSourceType(dataset *model.Dataset) query.SourceType {
+	if dataset.QueryType == "sql" && dataset.QuerySQL.Valid {
+		return query.SourceTypeSQL
+	}
+	return query.SourceTypeTable
 }
 
 // buildQuerySpecFromEntityRequest 将 service 层 entity 请求转换为 QuerySpec。

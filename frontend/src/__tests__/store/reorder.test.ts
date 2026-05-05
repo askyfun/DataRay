@@ -82,4 +82,39 @@ describe('reorderDimensionField', () => {
       'field-1',
     ]);
   });
+
+  it('addDimensionField 支持追加到指定维度组', () => {
+    const { addDimensionGroup, addDimensionField } = useStore.getState();
+    const fields = useStore.getState().chartBuilderFields;
+
+    addDimensionGroup({ id: 'dim-group-main', fields: [] });
+    addDimensionGroup({ id: 'dim-group-secondary', fields: [] });
+
+    addDimensionField(fields[0], 0);
+    addDimensionField(fields[1], 1);
+
+    expect(useStore.getState().queryConfig.dimensionGroups[0].fields).toEqual(['field-0']);
+    expect(useStore.getState().queryConfig.dimensionGroups[1].fields).toEqual(['field-1']);
+  });
+
+  it('addMetricField 支持追加到指定指标组', () => {
+    useStore.setState({
+      chartBuilderFields: [
+        { id: 'metric-0', name: 'revenue', type: 'metric', dataType: 'float' },
+        { id: 'metric-1', name: 'profit', type: 'metric', dataType: 'float' },
+      ],
+    });
+
+    const { addMetricGroup, addMetricField } = useStore.getState();
+    const fields = useStore.getState().chartBuilderFields;
+
+    addMetricGroup({ id: 'metric-group-main', fields: [] });
+    addMetricGroup({ id: 'metric-group-secondary', fields: [] });
+
+    addMetricField(fields[0], 0);
+    addMetricField(fields[1], 1);
+
+    expect(useStore.getState().queryConfig.metricGroups[0].fields).toEqual(['metric-0']);
+    expect(useStore.getState().queryConfig.metricGroups[1].fields).toEqual(['metric-1']);
+  });
 });

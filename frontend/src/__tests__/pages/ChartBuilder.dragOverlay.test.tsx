@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { AxiosResponse } from 'axios';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,6 +18,10 @@ interface MockDragStartEvent {
 interface MockDndContextProps {
   children: React.ReactNode;
   onDragStart?: (event: MockDragStartEvent) => void;
+  onDragEnd?: (event: {
+    active: { data: { current: unknown } };
+    over: { data: { current: unknown } } | null;
+  }) => void;
   onDragCancel?: () => void;
 }
 
@@ -39,8 +43,9 @@ vi.mock('@dnd-kit/core', async () => {
   await import('react');
 
   return {
-    DndContext: ({ children, onDragStart, onDragCancel }: MockDndContextProps) => {
+    DndContext: ({ children, onDragStart, onDragEnd, onDragCancel }: MockDndContextProps) => {
       dndCallbacks.onDragStart = onDragStart;
+      dndCallbacks.onDragEnd = onDragEnd;
       dndCallbacks.onDragCancel = onDragCancel;
       return <div data-testid="dnd-context">{children}</div>;
     },
@@ -171,5 +176,40 @@ describe('ChartBuilder drag overlay', () => {
     });
 
     expect(screen.queryByTestId('drag-overlay-field')).not.toBeInTheDocument();
+  });
+
+  it('drops a dimension field into the correct pivot dimension group', async () => {
+    renderChartBuilder();
+
+    await waitFor(() => {
+      expect(useStore.getState().chartBuilderFields[0]?.name).toBe('region');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '透视表' }));
+
+    act(() => {
+      dndCallbacks.onDragEnd?.({
+        active: {
+          data: {
+            current: {
+              type: 'field',
+              field: useStore.getState().chartBuilderFields[0],
+              fieldType: 'dimension',
+            },
+          },
+        },
+        over: {
+          data: {
+            current: {
+              type: 'dimension',
+              groupIndex: 1,
+            },
+          },
+        },
+      });
+    });
+
+    expect(useStore.getState().queryConfig.dimensionGroups[0]?.fields).toEqual([]);
+    expect(useStore.getState().queryConfig.dimensionGroups[1]?.fields).toEqual(['field-0']);
   });
 });

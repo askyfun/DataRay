@@ -8,10 +8,12 @@ interface TableChartProps {
   data: any[];
   loading: boolean;
   columns?: string[];
+  columnLabels?: Record<string, string>;
   /** 维度字段名列表，按用户拖入顺序 */
   dimensionNames?: string[];
   /** 指标字段名列表，按用户拖入顺序 */
   metricNames?: string[];
+  rowSize?: 'small' | 'middle' | 'large';
   pagination?: {
     page: number;
     pageSize: number;
@@ -25,8 +27,10 @@ const TableChart: React.FC<TableChartProps> = ({
   data,
   loading,
   columns: propColumns,
+  columnLabels,
   dimensionNames,
   metricNames,
+  rowSize = 'small',
   pagination,
   onPageChange,
   onSortChange,
@@ -69,13 +73,13 @@ const TableChart: React.FC<TableChartProps> = ({
     }
 
     return orderedKeys.map((key) => ({
-      title: key,
+      title: columnLabels?.[key] || key,
       dataIndex: key,
       key,
       sorter: true,
       ellipsis: true,
     }));
-  }, [data, propColumns, dimensionNames, metricNames]);
+  }, [columnLabels, data, propColumns, dimensionNames, metricNames]);
 
   const handleTableChange: TableProps<any>['onChange'] = (tablePagination, _filters, sorter) => {
     if (onPageChange && tablePagination) {
@@ -137,7 +141,7 @@ const TableChart: React.FC<TableChartProps> = ({
             }
       }
       bordered
-      size="small"
+      size={rowSize}
       scroll={{ x: 'max-content' }}
       onChange={handleTableChange}
     />

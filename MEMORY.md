@@ -31,3 +31,5 @@
 - 当该约束适用于多个接口时，优先下沉到统一响应层处理，而不是在各个 handler/service 中零散兜底；这样能覆盖图表查询、分页结果和未来新增接口。
 - 健康检查等非 `/api` 的生产响应只要返回 JSON，也应优先走统一响应封装；否则会绕过响应契约与空集合归一化。
 - `@dnd-kit/core` 的 `useDraggable` 只负责拖拽状态与事件，不会自动渲染跟随鼠标移动的可视预览；需要在页面级显式维护 active item，并用 `DragOverlay` 提供拖拽中的反馈动画。
+- 当前本地前端验证环境存在两类独立阻塞：`pnpm` 对 Node 版本有下限要求，以及 `vitest + jsdom` 在当前依赖组合下可能触发 `ERR_REQUIRE_ESM`。做前端 TDD 时应先确认 Node / pnpm / Vitest 运行矩阵，避免把环境问题误判为代码回归。
+- 使用 Codex 工具改文件时，应直接调用 `apply_patch`，不要通过 `exec_command` 包一层 `apply_patch`。虽然当前环境仍会执行成功，但会产生明确告警，属于应主动避免的操作失误。

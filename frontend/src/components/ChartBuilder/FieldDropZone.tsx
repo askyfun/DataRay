@@ -16,6 +16,7 @@ export type DropZoneType = 'dimension' | 'metric' | 'filter';
 export interface FieldDropZoneProps {
   zoneType: DropZoneType;
   label: string;
+  groupIndex?: number;
   fields: ChartField[];
   availableFields?: ChartField[];
   aggregations?: Record<string, string>;
@@ -142,6 +143,7 @@ const FieldPillInline: React.FC<FieldPillInlineProps> = ({
 
 const FieldDropZone: React.FC<FieldDropZoneProps> = ({
   zoneType,
+  groupIndex = 0,
   fields,
   availableFields = [],
   aggregations = {},
@@ -154,8 +156,8 @@ const FieldDropZone: React.FC<FieldDropZoneProps> = ({
   emptyText,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
-    id: `dropzone-${zoneType}`,
-    data: { type: zoneType },
+    id: `dropzone-${zoneType}-${groupIndex}`,
+    data: { type: zoneType, groupIndex },
   });
 
   const [dropdownOpen, setDropdownOpen] = useState(false);

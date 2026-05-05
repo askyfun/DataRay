@@ -251,6 +251,30 @@ func TestBunQueryBuilder_CountQuery(t *testing.T) {
 	}
 }
 
+func TestBunQueryBuilder_WithAggregatedColumnMapping(t *testing.T) {
+	qb := NewQueryBuilder()
+	if err := qb.WithColumnMappings(`[{"name":"cnt","expr":"count(*)","role":"metric","type":"bigint"}]`); err != nil {
+		t.Fatalf("unexpected column mapping error: %v", err)
+	}
+
+	ast := qb.Build(
+		"test_table",
+		SourceTypeTable,
+		[]string{"project_id"},
+		[]MetricConfig{{Field: "cnt", Agg: AggSum, Alias: "cnt"}},
+		[]FilterConfig{},
+		nil,
+		&Pagination{Page: 1, PageSize: 10},
+	)
+
+	sql := NewBunSQLBuilder(DialectMySQL).BuildSelect(ast)
+
+	expected := "SELECT project_id, count(*) AS cnt FROM test_table GROUP BY project_id LIMIT 10 OFFSET 0"
+	if sql != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, sql)
+	}
+}
+
 func TestBunQueryBuilder_WithSQLSource(t *testing.T) {
 	qb := NewBunQueryBuilder()
 
@@ -310,6 +334,7 @@ func TestBunQueryBuilder_SafeIdentifier(t *testing.T) {
 		expected string
 	}{
 		{"normal_field", "normal_field"},
+		{"`project_name`", "`project_name`"},
 		{"field_name", "field_name"},
 		{"field; DROP TABLE", "_invalid_identifier"},
 		{"field' OR '1'='1", "_invalid_identifier"},
@@ -322,6 +347,26 @@ func TestBunQueryBuilder_SafeIdentifier(t *testing.T) {
 		if result != tt.expected {
 			t.Errorf("safeIdentifier(%q): expected %q, got %q", tt.input, tt.expected, result)
 		}
+	}
+}
+
+func TestBunSQLBuilder_BuildSelect_WithQuotedDatasetColumnExpr(t *testing.T) {
+	ast := &QueryAST{
+		Source:         "test_table",
+		SourceType:     SourceTypeTable,
+		Dimensions:     []string{"project_name"},
+		DimensionExprs: []DimensionExprAST{{Field: "project_name", Alias: "project_name"}},
+		Metrics:        []MetricExpr{{Field: "cnt", FieldExpr: "count(*)", Agg: AggSum, Alias: "cnt", IsAgg: true}},
+		ColumnMappings: map[string]string{"project_name": "`project_name`", "cnt": "count(*)"},
+	}
+
+	ast.ApplyColumnMappings(ast.ColumnMappings)
+
+	sql := NewBunSQLBuilder(DialectMySQL).BuildSelect(ast)
+
+	expected := "SELECT `project_name`, count(*) AS cnt FROM test_table GROUP BY `project_name`"
+	if sql != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, sql)
 	}
 }
 
@@ -379,6 +424,71 @@ func TestBuildQueryStringWithBun(t *testing.T) {
 	expectedCount := "SELECT COUNT(*) AS _total FROM (SELECT 1 FROM test_table GROUP BY category) AS _count_query"
 	if countSQL != expectedCount {
 		t.Errorf("Expected count:\n%s\nGot:\n%s", expectedCount, countSQL)
+	}
+}
+
+func TestBuildQueryStringWithBun_PostgreSQLGranularityAndLimit(t *testing.T) {
+	ast := &QueryAST{
+		Source:     "orders",
+		SourceType: SourceTypeTable,
+		Dimensions: []string{"created_at_day", "region"},
+		DimensionExprs: []DimensionExprAST{
+			{Field: "created_at", Granularity: "day", Alias: "created_at_day"},
+			{Field: "region", Alias: "region"},
+		},
+		Metrics: []MetricExpr{{Field: "amount", FieldExpr: "amount", Agg: AggSum, Alias: "total_amount"}},
+		MetricExprs: []MetricPlanExpr{{Field: "amount", Agg: AggSum, Alias: "total_amount"}},
+		Limit:       10,
+	}
+
+	selectSQL, countSQL := BuildQueryStringWithBun(DialectPostgreSQL, ast)
+
+	expectedSelect := "SELECT DATE_TRUNC('day', created_at) AS created_at_day, region, SUM(amount) AS total_amount FROM orders GROUP BY DATE_TRUNC('day', created_at), region LIMIT 10"
+	if selectSQL != expectedSelect {
+		t.Errorf("Expected select:\n%s\nGot:\n%s", expectedSelect, selectSQL)
+	}
+
+	expectedCount := "SELECT COUNT(*) AS _total FROM (SELECT 1 FROM orders GROUP BY DATE_TRUNC('day', created_at), region LIMIT 10) AS _count_query"
+	if countSQL != expectedCount {
+		t.Errorf("Expected count:\n%s\nGot:\n%s", expectedCount, countSQL)
+	}
+}
+
+func TestBuildQueryStringWithBun_MySQLDayGranularity(t *testing.T) {
+	ast := &QueryAST{
+		Source:     "orders",
+		SourceType: SourceTypeTable,
+		Dimensions: []string{"created_at_day"},
+		DimensionExprs: []DimensionExprAST{
+			{Field: "created_at", Granularity: "day", Alias: "created_at_day"},
+		},
+		Metrics: []MetricExpr{{Field: "amount", FieldExpr: "amount", Agg: AggSum, Alias: "total_amount"}},
+	}
+
+	selectSQL, _ := BuildQueryStringWithBun(DialectMySQL, ast)
+
+	expectedSelect := "SELECT DATE(created_at) AS created_at_day, SUM(amount) AS total_amount FROM orders GROUP BY DATE(created_at)"
+	if selectSQL != expectedSelect {
+		t.Errorf("Expected select:\n%s\nGot:\n%s", expectedSelect, selectSQL)
+	}
+}
+
+func TestBuildQueryStringWithBun_ClickHouseDayGranularity(t *testing.T) {
+	ast := &QueryAST{
+		Source:     "orders",
+		SourceType: SourceTypeTable,
+		Dimensions: []string{"created_at_day"},
+		DimensionExprs: []DimensionExprAST{
+			{Field: "created_at", Granularity: "day", Alias: "created_at_day"},
+		},
+		Metrics: []MetricExpr{{Field: "amount", FieldExpr: "amount", Agg: AggSum, Alias: "total_amount"}},
+	}
+
+	selectSQL, _ := BuildQueryStringWithBun(DialectClickHouse, ast)
+
+	expectedSelect := "SELECT toDate(created_at) AS created_at_day, SUM(amount) AS total_amount FROM orders GROUP BY toDate(created_at)"
+	if selectSQL != expectedSelect {
+		t.Errorf("Expected select:\n%s\nGot:\n%s", expectedSelect, selectSQL)
 	}
 }
 

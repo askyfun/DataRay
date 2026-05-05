@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { AxiosResponse } from 'axios';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -129,6 +129,13 @@ describe('ChartBuilder', () => {
             comment: '',
             role: 'dimension',
           },
+          {
+            name: 'revenue',
+            expr: 'revenue',
+            type: 'number',
+            comment: '',
+            role: 'metric',
+          },
         ],
       })
     );
@@ -198,6 +205,198 @@ describe('ChartBuilder', () => {
       expect.objectContaining({
         chart_type: 'table',
         pagination: { page: 1, page_size: 10 },
+      })
+    );
+  });
+
+  it('switches query group labels based on chart definition', async () => {
+    renderChartBuilder();
+
+    await waitFor(() => {
+      expect(mockExecuteChartQuery).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByText('维度')).toBeInTheDocument();
+    expect(screen.getByText('指标')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '饼图' }));
+    expect(screen.getByText('分类')).toBeInTheDocument();
+    expect(screen.getByText('数值')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '散点图' }));
+    expect(screen.getByText('X 轴指标')).toBeInTheDocument();
+    expect(screen.getByText('Y 轴指标')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '透视表' }));
+    expect(screen.getByText('行维度')).toBeInTheDocument();
+    expect(screen.getByText('列维度')).toBeInTheDocument();
+    expect(screen.getByText('值指标')).toBeInTheDocument();
+  });
+
+  it('restores metric aliases and aggregations from saved chart config', async () => {
+    mockGetChartById.mockResolvedValueOnce(
+      mockAxiosResponse({
+        code: 20000,
+        msg: 'ok',
+        trace: '',
+        data: {
+          id: 1,
+          name: 'Revenue Table',
+          dataset_id: 1,
+          chart_type: 'table',
+          config: JSON.stringify({
+            chartType: 'table',
+            title: 'Revenue Table',
+            queryConfig: {
+              dimensionGroups: [{ id: 'dim-group-main', fields: ['field-0'] }],
+              metricGroups: [{ id: 'metric-group-main', fields: ['field-1'] }],
+              filters: [],
+              limit: 1000,
+            },
+            metricAliases: {
+              'field-1': 'gmv',
+            },
+            metricAggregations: {
+              'field-1': 'avg',
+            },
+          }),
+        },
+      })
+    );
+
+    renderChartBuilder();
+
+    await waitFor(() => {
+      expect(useStore.getState().metricAliases['field-1']).toBe('gmv');
+    });
+
+    expect(useStore.getState().metricAggregations['field-1']).toBe('avg');
+  });
+
+  it('restores dimension labels, metric units, formats, style and query options from saved config', async () => {
+    mockGetChartById.mockResolvedValueOnce(
+      mockAxiosResponse({
+        code: 20000,
+        msg: 'ok',
+        trace: '',
+        data: {
+          id: 1,
+          name: 'Styled Pie',
+          dataset_id: 1,
+          chart_type: 'pie',
+          config: JSON.stringify({
+            chartType: 'pie',
+            title: 'Styled Pie',
+            queryConfig: {
+              dimensionGroups: [{ id: 'dim-group-main', fields: ['field-0'] }],
+              metricGroups: [{ id: 'metric-group-main', fields: ['field-1'] }],
+              filters: [],
+              limit: 1000,
+            },
+            dimensionLabels: {
+              'field-0': '区域',
+            },
+            metricUnits: {
+              'field-1': '元',
+            },
+            metricFormats: {
+              'field-1': '0,0.00',
+            },
+            chartStyle: {
+              colors: ['#ff4d4f'],
+              smooth: true,
+              tableRowSize: 'middle',
+            },
+            chartQueryOptions: {
+              pieMergeOtherBelowRatio: 5,
+            },
+          }),
+        },
+      })
+    );
+
+    renderChartBuilder();
+
+    await waitFor(() => {
+      expect(useStore.getState().dimensionLabels['field-0']).toBe('区域');
+    });
+
+    expect(useStore.getState().metricUnits['field-1']).toBe('元');
+    expect(useStore.getState().metricFormats['field-1']).toBe('0,0.00');
+    expect(useStore.getState().chartStyle.colors).toEqual(['#ff4d4f']);
+    expect(useStore.getState().chartStyle.smooth).toBe(true);
+    expect(useStore.getState().chartStyle.tableRowSize).toBe('middle');
+    expect(useStore.getState().chartQueryOptions.pieMergeOtherBelowRatio).toBe(5);
+  });
+
+  it('does not emit duplicate key warnings when the same field appears in multiple groups', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    useStore.setState({
+      chartBuilderConfig: {
+        chartType: 'pivot',
+        xAxisField: null,
+        yAxisFields: [],
+        title: 'Pivot Chart',
+      },
+      queryConfig: {
+        dimensionGroups: [
+          { id: 'dim-group-rows', fields: ['field-0'] },
+          { id: 'dim-group-columns', fields: ['field-0'] },
+        ],
+        metricGroups: [],
+        filters: [],
+        limit: 1000,
+      },
+    });
+
+    renderChartBuilder();
+
+    await waitFor(() => {
+      expect(mockExecuteChartQuery).toHaveBeenCalledTimes(1);
+    });
+
+    expect(
+      errorSpy.mock.calls.some(
+        ([message]) =>
+          typeof message === 'string' &&
+          message.includes('Encountered two children with the same key')
+      )
+    ).toBe(false);
+
+    errorSpy.mockRestore();
+  });
+
+  it('limits pie query metrics to the visible chart definition groups', async () => {
+    useStore.setState({
+      chartBuilderConfig: {
+        chartType: 'pie',
+        xAxisField: null,
+        yAxisFields: [],
+        title: 'Pie Chart',
+      },
+      queryConfig: {
+        dimensionGroups: [{ id: 'dim-group-main', fields: ['field-0'] }],
+        metricGroups: [
+          { id: 'metric-group-main', fields: ['field-1'] },
+          { id: 'metric-group-extra', fields: ['field-1'] },
+        ],
+        filters: [],
+        limit: 1000,
+      },
+    });
+
+    renderChartBuilder();
+
+    await waitFor(() => {
+      expect(mockExecuteChartQuery).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mockExecuteChartQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        chart_type: 'pie',
+        dims: ['region'],
+        metrics: [{ field: 'revenue', agg: 'sum', alias: 'revenue' }],
       })
     );
   });

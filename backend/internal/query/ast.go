@@ -16,11 +16,40 @@ type QueryAST struct {
 	Source         string
 	SourceType     SourceType
 	Dimensions     []string
+	DimensionExprs []DimensionExprAST
 	Metrics        []MetricExpr
+	MetricExprs    []MetricPlanExpr
 	Filters        []FilterExpr
 	Sort           *SortExpr
 	Pagination     *Pagination
+	Limit          int
 	ColumnMappings map[string]string
+}
+
+// DimensionExprAST 表示规划后可直接参与 SQL 生成的维度表达式。
+// 调用场景：QueryPlanner 将 QuerySpec 中的结构化维度映射为 AST 节点，供不同 SQL builder 生成方言表达式。
+type DimensionExprAST struct {
+	Field       string
+	FieldExpr   string
+	Alias       string
+	Label       string
+	Granularity string
+	Bucket      string
+	Format      string
+}
+
+// MetricPlanExpr 表示规划后保留展示语义的指标表达式。
+// 调用场景：在保留旧 MetricExpr 兼容路径的同时，为后续 QueryAST 能力扩展保存单位、格式等结构化信息。
+type MetricPlanExpr struct {
+	Field     string
+	FieldExpr string
+	Agg       AggregationType
+	Alias     string
+	Label     string
+	Unit      string
+	Format    string
+	Cumulative bool
+	PercentOfTotal bool
 }
 
 type SourceType int
@@ -51,6 +80,34 @@ type SortExpr struct {
 	Field     string
 	FieldExpr string
 	Order     string
+}
+
+// ApplyColumnMappings 将列映射回填到已规划的 AST 上。
+// 调用场景：service 层先生成 PlannedAST，executor 拿到 dataset columns 后再把真实字段表达式补齐到 AST。
+// 主要逻辑：同步刷新维度、指标、过滤和排序表达式；若指标表达式本身已聚合，标记 IsAgg 避免重复包裹聚合函数。
+func (q *QueryAST) ApplyColumnMappings(columnMappings map[string]string) {
+	q.ColumnMappings = columnMappings
+
+	for i := range q.DimensionExprs {
+		q.DimensionExprs[i].FieldExpr = q.GetDimFieldExpr(q.DimensionExprs[i].Field)
+	}
+
+	for i := range q.Metrics {
+		q.Metrics[i].FieldExpr = q.GetMetricFieldExpr(q.Metrics[i].Field)
+		q.Metrics[i].IsAgg = isAggregateFunction(q.Metrics[i].FieldExpr)
+	}
+
+	for i := range q.MetricExprs {
+		q.MetricExprs[i].FieldExpr = q.GetMetricFieldExpr(q.MetricExprs[i].Field)
+	}
+
+	for i := range q.Filters {
+		q.Filters[i].FieldExpr = q.GetFilterFieldExpr(q.Filters[i].Field)
+	}
+
+	if q.Sort != nil {
+		q.Sort.FieldExpr = q.GetSortFieldExpr(q.Sort.Field)
+	}
 }
 
 func (q *QueryAST) GetMetricFieldExpr(field string) string {

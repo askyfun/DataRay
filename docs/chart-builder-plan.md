@@ -282,6 +282,18 @@ interface ChartQueryRequest {
 - Pie 图表显示百分比开关
 - 长尾合并阈值配置
 
+### 3.3.1 当前落地状态（2026-05-05）
+
+- 已落地 `ChartDefinition` registry 第一阶段，位置：`frontend/src/components/ChartBuilder/chartDefinitions.ts`
+- `ChartBuilder` 已根据图表定义动态渲染查询配置行标签与空态文案，不再只写死“维度/指标”两行
+- 当前已覆盖：表格、柱状图、折线图、面积图、饼图、散点图、透视表的基础定义
+- 切换图表类型时，前端会按定义补齐最小维度组/指标组数量，便于后续扩展多组语义
+- 当前仍保持旧请求协议兼容：查询请求继续扁平化为 `dims` / `metrics` / `filters` / `sort` / `pagination`
+- 多 group 基础绑定已接通：不同槽位的添加/删除/重排可作用于对应 group，页面级回归测试入口已补
+- 字段与样式配置的最小模型已落地：维度 `label`、指标 `agg/alias/unit/format`、颜色、平滑曲线、表格行尺寸均可保存并恢复
+- 饼图 `query_options` 已形成最小前后端闭环：前端可配置“低比例并入其他”，后端 `PieProcessor` 已消费该阈值
+- 当前限制：维度 `granularity`、更完整的配置 UI、以及后端对 `unit/format/style` 等配置的真正消费仍属于后续阶段
+
 ### 3.4 TableChart 组件
 
 - 使用 Ant Design Table

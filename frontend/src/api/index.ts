@@ -216,6 +216,12 @@ export interface ChartQuerySort {
   order: 'asc' | 'desc';
 }
 
+export interface ChartQueryConfig {
+  query_options?: {
+    pie_merge_other_below_ratio?: number;
+  };
+}
+
 export interface ChartQueryRequest {
   dataset_id: number;
   chart_type: string;
@@ -224,6 +230,7 @@ export interface ChartQueryRequest {
   filters: ChartQueryFilter[];
   pagination?: ChartQueryPagination;
   sort?: ChartQuerySort;
+  config?: ChartQueryConfig;
 }
 
 export interface TableResponse {

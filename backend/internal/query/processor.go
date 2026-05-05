@@ -58,13 +58,15 @@ func (p *TableProcessor) Process(rows []map[string]any, dims []string, metrics [
 
 // PieProcessor Pie 图表处理器
 type PieProcessor struct {
-	Threshold int // 长尾合并阈值，默认 20
+	Threshold            int     // 长尾合并阈值，默认 20
+	MergeOtherBelowRatio float64 // 百分比低于该阈值时合并为“其他”
 }
 
 // NewPieProcessor 创建 Pie 处理器
 func NewPieProcessor() *PieProcessor {
 	return &PieProcessor{
-		Threshold: 20,
+		Threshold:            20,
+		MergeOtherBelowRatio: 0,
 	}
 }
 
@@ -117,6 +119,37 @@ func (p *PieProcessor) Process(rows []map[string]any, dims []string, metrics []M
 		if total > 0 {
 			dataItems[i].Percentage = math.Round(dataItems[i].Value*10000/total) / 100
 		}
+	}
+
+	// 按百分比阈值合并“其他”
+	if p.MergeOtherBelowRatio > 0 {
+		mainData := make([]PieDataItem, 0, len(dataItems))
+		otherData := make([]PieDataItem, 0)
+
+		for _, item := range dataItems {
+			if item.Percentage < p.MergeOtherBelowRatio {
+				otherData = append(otherData, item)
+				continue
+			}
+			mainData = append(mainData, item)
+		}
+
+		if len(otherData) > 0 {
+			var otherValue float64
+			var otherPercentage float64
+			for _, item := range otherData {
+				otherValue += item.Value
+				otherPercentage += item.Percentage
+			}
+
+			mainData = append(mainData, PieDataItem{
+				Name:       "其他",
+				Value:      otherValue,
+				Percentage: math.Round(otherPercentage*100) / 100,
+			})
+		}
+
+		dataItems = mainData
 	}
 
 	// 长尾合并

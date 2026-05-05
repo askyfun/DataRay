@@ -48,20 +48,34 @@ func (e *Executor) Execute(ctx context.Context, req *ChartQueryRequest) (Executo
 	qb := NewQueryBuilder()
 	qb.WithColumnMappings(e.dataset.Columns)
 
-	ast := qb.Build(
-		baseQuery,
-		sourceType,
-		req.Dims,
-		req.Metrics,
-		req.Filters,
-		req.Sort,
-		req.Pagination,
-	)
+	ast := req.PlannedAST
+	if ast == nil {
+		ast = qb.Build(
+			baseQuery,
+			sourceType,
+			req.Dims,
+			req.Metrics,
+			req.Filters,
+			req.Sort,
+			req.Pagination,
+		)
+	} else {
+		ast.ApplyColumnMappings(qb.columnMappings)
+		if ast.Source == "" {
+			ast.Source = baseQuery
+		}
+		ast.SourceType = sourceType
+	}
 
 	sql, countSQL := BuildQueryStringWithBun(dialect, ast)
 	slog.Debug("generated SQL", "select", sql, "count", countSQL)
 
 	processor := GetProcessor(req.ChartType)
+	if pieProcessor, ok := processor.(*PieProcessor); ok && req.Config != nil && req.Config.QueryOptions != nil {
+		if req.Config.QueryOptions.MergeOtherBelowRatio != nil {
+			pieProcessor.MergeOtherBelowRatio = *req.Config.QueryOptions.MergeOtherBelowRatio
+		}
+	}
 
 	if req.ChartType == ChartTypeTable && req.Pagination != nil {
 		slog.Debug("executing data query", "sql", sql)

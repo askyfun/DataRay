@@ -113,6 +113,55 @@ func TestExecutor_ValidBaseQuery(t *testing.T) {
 	}
 }
 
+func TestExecutor_UsesPlannedASTWhenProvided(t *testing.T) {
+	dataset := &model.Dataset{
+		ID:        1,
+		Name:      "Test Dataset",
+		QueryType: "table",
+		TableName: sql.NullString{String: "orders", Valid: true},
+		QuerySQL:  sql.NullString{Valid: false},
+	}
+
+	ds := &model.Datasource{
+		ID:   1,
+		Name: "Test DS",
+		Type: "postgresql",
+	}
+
+	conn := &MockConnection{
+		rows: []map[string]any{
+			{"created_at_day": "2025-05-01 00:00:00+00", "total_amount": 100.0},
+		},
+	}
+	executor := NewExecutor(conn, dataset, ds)
+
+	req := &ChartQueryRequest{
+		DatasetID: 1,
+		ChartType: ChartTypeLine,
+		Dims:      []string{"created_at"},
+		Metrics:   []MetricConfig{{Field: "amount", Agg: AggSum, Alias: "total_amount"}},
+		PlannedAST: &QueryAST{
+			Source:     "orders",
+			SourceType: SourceTypeTable,
+			Dimensions: []string{"created_at_day"},
+			DimensionExprs: []DimensionExprAST{
+				{Field: "created_at", Granularity: "day", Alias: "created_at_day"},
+			},
+			Metrics: []MetricExpr{{Field: "amount", FieldExpr: "amount", Agg: AggSum, Alias: "total_amount"}},
+		},
+	}
+
+	result, err := executor.Execute(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expectedSQL := "SELECT DATE_TRUNC('day', created_at) AS created_at_day, SUM(amount) AS total_amount FROM orders GROUP BY DATE_TRUNC('day', created_at)"
+	if result.Select != expectedSQL {
+		t.Fatalf("expected AST-driven SQL\nwant: %s\n got: %s", expectedSQL, result.Select)
+	}
+}
+
 func TestExecutor_TableChart_WithPagination(t *testing.T) {
 	dataset := &model.Dataset{
 		ID:        1,

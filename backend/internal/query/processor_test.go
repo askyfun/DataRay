@@ -287,6 +287,44 @@ func TestAxisProcessor_MultiDims_TwoDims(t *testing.T) {
 	}
 }
 
+// TestPieProcessor_WithMergeOtherBelowRatio 验证饼图可按比例阈值合并“其他”。
+func TestPieProcessor_WithMergeOtherBelowRatio(t *testing.T) {
+	p := NewPieProcessor()
+	p.MergeOtherBelowRatio = 10
+
+	rows := []map[string]any{
+		{"category": "A", "value": 80.0},
+		{"category": "B", "value": 15.0},
+		{"category": "C", "value": 5.0},
+	}
+	metrics := []MetricConfig{{Field: "value", Agg: AggSum}}
+
+	resp, err := p.Process(rows, []string{"category"}, metrics)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	pieResp, ok := resp.(*PieResponse)
+	if !ok {
+		t.Fatalf("expected *PieResponse, got %T", resp)
+	}
+
+	if len(pieResp.Data) != 3 {
+		t.Fatalf("expected merged pie data length 3, got %d", len(pieResp.Data))
+	}
+
+	last := pieResp.Data[2]
+	if last.Name != "其他" {
+		t.Fatalf("expected merged item name '其他', got %q", last.Name)
+	}
+	if last.Value != 5 {
+		t.Fatalf("expected merged item value 5, got %v", last.Value)
+	}
+	if last.Percentage != 5 {
+		t.Fatalf("expected merged item percentage 5, got %v", last.Percentage)
+	}
+}
+
 // TestAxisProcessor_MultiDims_ThreeDims 验证三个维度：后续维度值用 " - " 拼接
 func TestAxisProcessor_MultiDims_ThreeDims(t *testing.T) {
 	p := &AxisProcessor{}

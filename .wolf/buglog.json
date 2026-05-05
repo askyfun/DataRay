@@ -144,6 +144,61 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-05-05T11:08:48.084Z"
+    },
+    {
+      "id": "bug-010",
+      "timestamp": "2026-05-05T12:31:03.429Z",
+      "error_message": "Incorrect value in code",
+      "file": "plan.md",
+      "root_cause": "Had `QueryAST`",
+      "fix": "Changed to `chart_spec.go`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-05T12:31:03.429Z"
+    },
+    {
+      "id": "bug-011",
+      "timestamp": "2026-05-05T21:46:15+08:00",
+      "error_message": "P2 QueryAST tests fail: QueryAST missing structured fields and QueryPlanner missing PlanAST",
+      "file": "backend/internal/query",
+      "root_cause": "P2 enhancement not implemented yet; planner still only returns flattened PlannedQuery and AST lacks structured dimension/metric metadata plus limit",
+      "fix": "Add structured QueryAST fields, implement QueryPlanner.PlanAST, and teach SQL builders granularity/limit rendering",
+      "tags": [
+        "backend",
+        "query",
+        "tdd",
+        "queryast"
+      ],
+      "related_bugs": [
+        "bug-010"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-05-05T21:46:15+08:00"
+    },
+    {
+      "id": "bug-012",
+      "timestamp": "2026-05-05T21:56:32+08:00",
+      "error_message": "AST cutover tests fail: ChartQueryRequest missing PlannedAST field",
+      "file": "backend/internal/query/types.go",
+      "root_cause": "Execution path still only supports flattened query fields; internal request object cannot carry planned QueryAST from service to executor",
+      "fix": "Add internal PlannedAST field to ChartQueryRequest and update service/executor to populate and consume it",
+      "tags": [
+        "backend",
+        "query",
+        "executor",
+        "service",
+        "queryast"
+      ],
+      "related_bugs": [
+        "bug-011"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-05-05T21:56:32+08:00"
     }
   ]
 }

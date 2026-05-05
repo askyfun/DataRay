@@ -303,3 +303,77 @@ func TestQueryPlanner_PlanNilSpec(t *testing.T) {
 		t.Fatalf("expected nil sort/pagination and zero limit, got %+v", planned)
 	}
 }
+
+func TestQueryPlanner_PlanAST_PreservesStructuredSemantics(t *testing.T) {
+	spec := &QuerySpec{
+		Dimensions: []DimensionExpr{
+			{Field: "created_at", Label: "日期", Granularity: "day"},
+			{Field: "region", Label: "地区"},
+		},
+		Metrics: []MetricExpr2{
+			{Field: "amount", Agg: AggSum, Alias: "total_amount", Unit: "CNY", Format: "currency"},
+		},
+		Filters: []FilterConfig{
+			{Field: "region", Op: FilterEq, Value: "华东"},
+		},
+		Sort:       &SortConfig{Field: "total_amount", Order: "desc"},
+		Pagination: &Pagination{Page: 1, PageSize: 50},
+		Limit:      10,
+	}
+
+	ast := NewQueryPlanner().PlanAST("orders", SourceTypeTable, spec)
+
+	if ast == nil {
+		t.Fatal("expected ast, got nil")
+	}
+	if ast.Source != "orders" || ast.SourceType != SourceTypeTable {
+		t.Fatalf("unexpected source info: %+v", ast)
+	}
+	if len(ast.DimensionExprs) != 2 {
+		t.Fatalf("expected 2 dimension exprs, got %d", len(ast.DimensionExprs))
+	}
+	if ast.DimensionExprs[0].Field != "created_at" || ast.DimensionExprs[0].Granularity != "day" || ast.DimensionExprs[0].Alias != "created_at_day" {
+		t.Fatalf("unexpected first dimension expr: %+v", ast.DimensionExprs[0])
+	}
+	if ast.DimensionExprs[1].Field != "region" || ast.DimensionExprs[1].Label != "地区" {
+		t.Fatalf("unexpected second dimension expr: %+v", ast.DimensionExprs[1])
+	}
+	if len(ast.MetricExprs) != 1 {
+		t.Fatalf("expected 1 metric expr, got %d", len(ast.MetricExprs))
+	}
+	if ast.MetricExprs[0].Field != "amount" || ast.MetricExprs[0].Unit != "CNY" || ast.MetricExprs[0].Format != "currency" {
+		t.Fatalf("unexpected metric expr: %+v", ast.MetricExprs[0])
+	}
+	if ast.Limit != 10 {
+		t.Fatalf("expected limit 10, got %d", ast.Limit)
+	}
+	if len(ast.Dimensions) != 2 || ast.Dimensions[0] != "created_at_day" || ast.Dimensions[1] != "region" {
+		t.Fatalf("unexpected flattened dimensions: %v", ast.Dimensions)
+	}
+	if len(ast.Metrics) != 1 || ast.Metrics[0].Alias != "total_amount" {
+		t.Fatalf("unexpected flattened metrics: %+v", ast.Metrics)
+	}
+	if ast.Sort == nil || ast.Sort.Field != "total_amount" {
+		t.Fatalf("unexpected sort: %+v", ast.Sort)
+	}
+}
+
+func TestQueryPlanner_PlanAST_MarksAggregatedColumnMappings(t *testing.T) {
+	spec := &QuerySpec{
+		Dimensions: []DimensionExpr{{Field: "project_id"}},
+		Metrics: []MetricExpr2{{Field: "cnt", Agg: AggSum, Alias: "cnt"}},
+	}
+
+	ast := NewQueryPlanner().PlanAST("test_table", SourceTypeTable, spec)
+	ast.ApplyColumnMappings(map[string]string{"cnt": "count(*)"})
+
+	sql := NewBunSQLBuilder(DialectMySQL).BuildSelect(ast)
+
+	expected := "SELECT project_id, count(*) AS cnt FROM test_table GROUP BY project_id"
+	if sql != expected {
+		t.Fatalf("expected SQL %q, got %q", expected, sql)
+	}
+	if len(ast.Metrics) != 1 || !ast.Metrics[0].IsAgg {
+		t.Fatalf("expected planned metric to be marked aggregated, got %+v", ast.Metrics)
+	}
+}

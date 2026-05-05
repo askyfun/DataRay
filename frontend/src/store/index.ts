@@ -71,6 +71,16 @@ export interface ChartConfig {
   title: string;
 }
 
+export interface ChartStyleConfig {
+  colors: string[];
+  smooth: boolean;
+  tableRowSize: 'small' | 'middle' | 'large';
+}
+
+export interface ChartQueryOptions {
+  pieMergeOtherBelowRatio?: number;
+}
+
 // 查询配置 - 支持多维度组和多指标组
 export interface QueryConfig {
   dimensionGroups: FieldGroup[];
@@ -105,8 +115,13 @@ export interface AppState {
   chartDataLoading: boolean;
   queryConfig: QueryConfig;
   autoQuery: boolean;
+  dimensionLabels: Record<string, string>;
   metricAggregations: Record<string, string>;
   metricAliases: Record<string, string>;
+  metricUnits: Record<string, string>;
+  metricFormats: Record<string, string>;
+  chartStyle: ChartStyleConfig;
+  chartQueryOptions: ChartQueryOptions;
   chartQueryResponse: ChartQueryResponse | null;
   tablePagination: { page: number; pageSize: number; total: number };
   tableColumns: string[];
@@ -151,14 +166,26 @@ export interface AppState {
   addFilter: (filter?: FilterCondition) => void;
   removeFilter: (id: string) => void;
   updateFilter: (id: string, filter: Partial<FilterCondition>) => void;
-  addDimensionField: (field: ChartField) => void;
-  removeDimensionField: (fieldId: string) => void;
-  reorderDimensionField: (oldIndex: number, newIndex: number) => void;
-  addMetricField: (field: ChartField) => void;
-  removeMetricField: (fieldId: string) => void;
-  reorderMetricField: (oldIndex: number, newIndex: number) => void;
+  addDimensionField: (field: ChartField, groupIndex?: number) => void;
+  removeDimensionField: (fieldId: string, groupIndex?: number) => void;
+  reorderDimensionField: (oldIndex: number, newIndex: number, groupIndex?: number) => void;
+  addMetricField: (field: ChartField, groupIndex?: number) => void;
+  removeMetricField: (fieldId: string, groupIndex?: number) => void;
+  reorderMetricField: (oldIndex: number, newIndex: number, groupIndex?: number) => void;
+  setDimensionLabel: (fieldId: string, label: string) => void;
+  setDimensionLabels: (labels: Record<string, string>) => void;
   setMetricAggregation: (fieldId: string, aggregation: string) => void;
   setMetricAlias: (fieldId: string, alias: string) => void;
+  setMetricAggregations: (aggregations: Record<string, string>) => void;
+  setMetricAliases: (aliases: Record<string, string>) => void;
+  setMetricUnit: (fieldId: string, unit: string) => void;
+  setMetricUnits: (units: Record<string, string>) => void;
+  setMetricFormat: (fieldId: string, format: string) => void;
+  setMetricFormats: (formats: Record<string, string>) => void;
+  setChartStyle: (style: Partial<ChartStyleConfig>) => void;
+  setChartStyleState: (style: ChartStyleConfig) => void;
+  setChartQueryOptions: (options: Partial<ChartQueryOptions>) => void;
+  setChartQueryOptionsState: (options: ChartQueryOptions) => void;
   toggleAutoQuery: () => void;
   executeChartQuery: (request: ChartQueryRequest) => Promise<void>;
   setTablePagination: (pagination: { page: number; pageSize: number; total: number }) => void;
@@ -205,8 +232,17 @@ export const useStore = create<AppState>((set) => ({
     limit: 1000,
   },
   autoQuery: true,
+  dimensionLabels: {},
   metricAggregations: {},
   metricAliases: {},
+  metricUnits: {},
+  metricFormats: {},
+  chartStyle: {
+    colors: [],
+    smooth: false,
+    tableRowSize: 'small',
+  },
+  chartQueryOptions: {},
   chartQueryResponse: null,
   tablePagination: { page: 1, pageSize: 10, total: 0 },
   tableColumns: [],
@@ -414,6 +450,17 @@ export const useStore = create<AppState>((set) => ({
         filters: [],
         limit: 1000,
       },
+      dimensionLabels: {},
+      metricAggregations: {},
+      metricAliases: {},
+      metricUnits: {},
+      metricFormats: {},
+      chartStyle: {
+        colors: [],
+        smooth: false,
+        tableRowSize: 'small',
+      },
+      chartQueryOptions: {},
     });
   },
 
@@ -509,104 +556,121 @@ export const useStore = create<AppState>((set) => ({
     }));
   },
 
-  addDimensionField: (field: ChartField) => {
+  addDimensionField: (field: ChartField, groupIndex = 0) => {
     set((state) => {
-      const existingFields = state.queryConfig.dimensionGroups[0]?.fields || [];
+      const existingFields = state.queryConfig.dimensionGroups[groupIndex]?.fields || [];
       if (existingFields.includes(field.id)) return state;
 
       const newGroup = {
-        id: 'dim-group-main',
+        id: state.queryConfig.dimensionGroups[groupIndex]?.id || `dim-group-${groupIndex + 1}`,
         fields: [...existingFields, field.id],
       };
+
+      const dimensionGroups = [...state.queryConfig.dimensionGroups];
+      dimensionGroups[groupIndex] = newGroup;
 
       return {
         queryConfig: {
           ...state.queryConfig,
-          dimensionGroups:
-            state.queryConfig.dimensionGroups.length > 0
-              ? [{ ...state.queryConfig.dimensionGroups[0], fields: newGroup.fields }]
-              : [newGroup],
+          dimensionGroups,
         },
       };
     });
   },
 
-  removeDimensionField: (fieldId: string) => {
+  removeDimensionField: (fieldId: string, groupIndex) => {
     set((state) => ({
       queryConfig: {
         ...state.queryConfig,
-        dimensionGroups: state.queryConfig.dimensionGroups.map((g) => ({
-          ...g,
-          fields: g.fields.filter((f) => f !== fieldId),
-        })),
+        dimensionGroups: state.queryConfig.dimensionGroups.map((g, index) =>
+          groupIndex === undefined || index === groupIndex
+            ? { ...g, fields: g.fields.filter((f) => f !== fieldId) }
+            : g
+        ),
       },
     }));
   },
 
-  reorderDimensionField: (oldIndex: number, newIndex: number) => {
+  reorderDimensionField: (oldIndex: number, newIndex: number, groupIndex = 0) => {
     set((state) => {
-      const group = state.queryConfig.dimensionGroups[0];
+      const group = state.queryConfig.dimensionGroups[groupIndex];
       if (!group) return state;
+
+      const dimensionGroups = [...state.queryConfig.dimensionGroups];
+      dimensionGroups[groupIndex] = {
+        ...group,
+        fields: arrayMove(group.fields, oldIndex, newIndex),
+      };
+
       return {
         queryConfig: {
           ...state.queryConfig,
-          dimensionGroups: [
-            { ...group, fields: arrayMove(group.fields, oldIndex, newIndex) },
-            ...state.queryConfig.dimensionGroups.slice(1),
-          ],
+          dimensionGroups,
         },
       };
     });
   },
 
-  addMetricField: (field: ChartField) => {
+  addMetricField: (field: ChartField, groupIndex = 0) => {
     set((state) => {
-      const existingFields = state.queryConfig.metricGroups[0]?.fields || [];
+      const existingFields = state.queryConfig.metricGroups[groupIndex]?.fields || [];
       if (existingFields.includes(field.id)) return state;
 
       const newGroup = {
-        id: 'metric-group-main',
+        id: state.queryConfig.metricGroups[groupIndex]?.id || `metric-group-${groupIndex + 1}`,
         fields: [...existingFields, field.id],
       };
+
+      const metricGroups = [...state.queryConfig.metricGroups];
+      metricGroups[groupIndex] = newGroup;
 
       return {
         queryConfig: {
           ...state.queryConfig,
-          metricGroups:
-            state.queryConfig.metricGroups.length > 0
-              ? [{ ...state.queryConfig.metricGroups[0], fields: newGroup.fields }]
-              : [newGroup],
+          metricGroups,
         },
       };
     });
   },
 
-  removeMetricField: (fieldId: string) => {
+  removeMetricField: (fieldId: string, groupIndex) => {
     set((state) => ({
       queryConfig: {
         ...state.queryConfig,
-        metricGroups: state.queryConfig.metricGroups.map((g) => ({
-          ...g,
-          fields: g.fields.filter((f) => f !== fieldId),
-        })),
+        metricGroups: state.queryConfig.metricGroups.map((g, index) =>
+          groupIndex === undefined || index === groupIndex
+            ? { ...g, fields: g.fields.filter((f) => f !== fieldId) }
+            : g
+        ),
       },
     }));
   },
 
-  reorderMetricField: (oldIndex: number, newIndex: number) => {
+  reorderMetricField: (oldIndex: number, newIndex: number, groupIndex = 0) => {
     set((state) => {
-      const group = state.queryConfig.metricGroups[0];
+      const group = state.queryConfig.metricGroups[groupIndex];
       if (!group) return state;
+
+      const metricGroups = [...state.queryConfig.metricGroups];
+      metricGroups[groupIndex] = { ...group, fields: arrayMove(group.fields, oldIndex, newIndex) };
+
       return {
         queryConfig: {
           ...state.queryConfig,
-          metricGroups: [
-            { ...group, fields: arrayMove(group.fields, oldIndex, newIndex) },
-            ...state.queryConfig.metricGroups.slice(1),
-          ],
+          metricGroups,
         },
       };
     });
+  },
+
+  setDimensionLabel: (fieldId: string, label: string) => {
+    set((state) => ({
+      dimensionLabels: { ...state.dimensionLabels, [fieldId]: label },
+    }));
+  },
+
+  setDimensionLabels: (labels: Record<string, string>) => {
+    set({ dimensionLabels: labels });
   },
 
   setMetricAggregation: (fieldId: string, aggregation: string) => {
@@ -615,10 +679,58 @@ export const useStore = create<AppState>((set) => ({
     }));
   },
 
+  setMetricAggregations: (aggregations: Record<string, string>) => {
+    set({ metricAggregations: aggregations });
+  },
+
   setMetricAlias: (fieldId: string, alias: string) => {
     set((state) => ({
       metricAliases: { ...state.metricAliases, [fieldId]: alias },
     }));
+  },
+
+  setMetricAliases: (aliases: Record<string, string>) => {
+    set({ metricAliases: aliases });
+  },
+
+  setMetricUnit: (fieldId: string, unit: string) => {
+    set((state) => ({
+      metricUnits: { ...state.metricUnits, [fieldId]: unit },
+    }));
+  },
+
+  setMetricUnits: (units: Record<string, string>) => {
+    set({ metricUnits: units });
+  },
+
+  setMetricFormat: (fieldId: string, format: string) => {
+    set((state) => ({
+      metricFormats: { ...state.metricFormats, [fieldId]: format },
+    }));
+  },
+
+  setMetricFormats: (formats: Record<string, string>) => {
+    set({ metricFormats: formats });
+  },
+
+  setChartStyle: (style: Partial<ChartStyleConfig>) => {
+    set((state) => ({
+      chartStyle: { ...state.chartStyle, ...style },
+    }));
+  },
+
+  setChartStyleState: (style: ChartStyleConfig) => {
+    set({ chartStyle: style });
+  },
+
+  setChartQueryOptions: (options: Partial<ChartQueryOptions>) => {
+    set((state) => ({
+      chartQueryOptions: { ...state.chartQueryOptions, ...options },
+    }));
+  },
+
+  setChartQueryOptionsState: (options: ChartQueryOptions) => {
+    set({ chartQueryOptions: options });
   },
 
   toggleAutoQuery: () => {

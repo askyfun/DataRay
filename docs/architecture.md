@@ -94,8 +94,10 @@ Monorepo 结构，包含前端 (React/TypeScript) 和后端 (Go)。核心功能�
 
 - 对外接口仍使用旧协议：`chart_type` + `dims` + `metrics` + `filters` + `pagination` + `sort`。
 - `backend/internal/service/chart/impl.go` 已先将旧请求转换为内部 `QuerySpec`。
-- `QueryPlanner` 已作为最小兼容规划层接入，当前先将 `QuerySpec` 规划为旧 executor / builder 仍可消费的平铺参数。
-- `QueryPlanner` 还未完整产出 `QueryAST`，时间粒度、分桶、复杂过滤组等能力仍属于后续阶段。
+- `QueryPlanner` 已同时支持两条内部规划路径：`QuerySpec -> 旧 executor / builder 可消费的平铺参数`，以及 `QuerySpec -> 增强版 QueryAST`。
+- `chartService.Query` 已在内部先生成 `PlannedAST`，并由 `query.Executor` 优先消费该 AST 生成 SQL；平铺参数链路仍作为兼容回退保留。
+- `QueryAST` 第一阶段已支持结构化维度/指标元信息、`limit`，以及日期维度 `day` 粒度的 PostgreSQL / MySQL / ClickHouse 方言 SQL 生成。
+- 分桶、复杂过滤组、更多时间粒度，以及彻底移除平铺参数兼容链路仍属于后续阶段。
 
 ### 响应层
 

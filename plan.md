@@ -132,22 +132,22 @@
 
 ### P2：增强 QueryAST
 
-- [ ] 将维度从字符串升级为结构化表达式。
-  - [ ] 字段名。
-  - [ ] 展示名。
-  - [ ] 时间粒度。
+- [x] 将维度从字符串升级为结构化表达式。
+  - [x] 字段名。
+  - [x] 展示名。
+  - [x] 时间粒度。
   - [ ] 分桶。
   - [ ] 格式化信息。
-- [ ] 将指标升级为结构化表达式。
-  - [ ] 聚合。
-  - [ ] 别名。
-  - [ ] 单位。
-  - [ ] 数值格式。
+- [x] 将指标升级为结构化表达式。
+  - [x] 聚合。
+  - [x] 别名。
+  - [x] 单位。
+  - [x] 数值格式。
   - [ ] 是否累计 / 占比。
 - [ ] 为日期维度增加统一时间粒度能力。
-  - [ ] PostgreSQL 方言测试。
-  - [ ] MySQL 方言测试。
-  - [ ] ClickHouse 方言测试。
+  - [x] PostgreSQL 方言测试。
+  - [x] MySQL 方言测试。
+  - [x] ClickHouse 方言测试。
 - [ ] 增强过滤能力。
   - [ ] 过滤组结构设计。
   - [ ] 时间范围过滤。
@@ -156,30 +156,37 @@
 - [ ] 引入 `QueryPlanner`。
   - [x] 定义最小 `QuerySpec -> 兼容旧执行链路入参` 规划流程。
   - [x] 为基础图表补规划测试。
-  - [ ] 后续升级为完整 `QuerySpec -> QueryAST` 规划流程。
+  - [x] 落地第一阶段 `QuerySpec -> QueryAST` 规划流程。
+  - [x] 打通最小执行链路：service 附带 `PlannedAST`，executor 优先直接消费 `QueryAST`。
+  - [ ] 后续移除平铺参数兼容回退，收敛到统一 AST 执行链路。
 
 ### P3：前端 ChartBuilder 升级
 
-- [ ] 前端新增 `ChartDefinition` registry。
-  - [ ] 折线图定义。
-  - [ ] 透视表定义。
+- [x] 前端新增 `ChartDefinition` registry。
+  - [x] 折线图定义。
+  - [x] 透视表定义。
   - [ ] 双轴图定义。
-  - [ ] 饼图定义。
-- [ ] ChartBuilder 根据图表定义动态渲染维度组和指标组。
+  - [x] 饼图定义。
+  - [x] 表格 / 柱状图 / 面积图 / 散点图基础定义。
+- [x] ChartBuilder 根据图表定义动态渲染维度组和指标组。
+  - [x] 第一阶段仅落地“定义驱动标签/空态/最小 group 数量补齐”。
+  - [x] 已补齐多 group 基础绑定：不同槽位的添加/删除/重排可作用于对应 group。
+  - [x] 已补页面级回归测试入口：覆盖拖入不同 group 的基础行为。
+  - [ ] 后续继续补齐多 group 精确拖拽交互与更完整组级操作。
 - [ ] 支持维度字段属性配置。
   - [ ] 日期精度。
-  - [ ] 展示名。
+  - [x] 展示名（已支持保存到图表配置并在编辑时恢复，表格/图表预览可消费）。
 - [ ] 支持指标属性配置。
-  - [ ] 聚合。
-  - [ ] 别名。
-  - [ ] 单位。
-  - [ ] 格式化。
+  - [x] 聚合（已支持保存到图表配置并在编辑时恢复）。
+  - [x] 别名（已支持保存到图表配置并在编辑时恢复）。
+  - [x] 单位（已支持保存到图表配置并在编辑时恢复，图表预览可消费）。
+  - [x] 格式化（已支持保存到图表配置并在编辑时恢复，当前先完成配置持久化）。
 - [ ] 支持图表样式配置。
-  - [ ] 颜色。
-  - [ ] 线型。
-  - [ ] 表格行高。
+  - [x] 颜色。
+  - [x] 线型。
+  - [x] 表格行高。
 - [ ] 支持图表特有查询配置。
-  - [ ] 饼图低比例合并为“其他”。
+  - [x] 饼图低比例合并为“其他”（前后端最小闭环已完成，后端已消费该 query option）。
 
 ### P4：统一响应结构落地
 
@@ -206,6 +213,9 @@
 - [ ] 每一个契约升级都补前后端类型/单元测试。
 - [ ] 后端关键阶段提交前运行目标测试，必要时运行 `go test -race ./...`。
 - [ ] 前端改造阶段运行相关 Vitest 测试。
+  - [ ] 当前受本地 Node/pnpm 与 Vitest/jsdom ESM 环境问题影响，自动测试待环境修复后补跑。
+  - [x] 已补页面级与 store 级测试用例，等待环境修复后执行。
+- [x] 本轮静态与后端验证已完成：`biome check`、`tsc --noEmit`、`go test ./internal/query`、`go test ./internal/service/chart`。
 - [ ] 每完成一个阶段，立即把对应任务标记为 `[x]`。
 
 ## 今天停在这里时的状态
@@ -216,6 +226,13 @@
 - [x] 分页与排序规则已完成（后端 ORDER BY 不再被分页跳过，前端 sort 参数已接入请求链路）。
 - [x] `ChartSpec` / `QuerySpec` 类型定义与 adapter 已完成（`chart_spec.go`）。
 - [x] `ChartSpec` → `QuerySpec` 已接入 `chartService.Query` 主路径。
+- [x] 前端 `ChartDefinition` registry 第一阶段已落地，`ChartBuilder` 已可按图表定义动态渲染组标签与空态文案。
+- [x] 前端 `ChartBuilder` 第二阶段已完成第一批：多组字段基础绑定已接通。
+- [x] 前端 `ChartBuilder` 已补齐指标属性配置的最小持久化：`agg/alias` 可随图表配置保存并在编辑时恢复。
+- [x] 前端 `ChartBuilder` 已补齐一轮最小配置模型：维度 `label`、指标 `unit/format`、样式配置、饼图 query option 均可保存并恢复。
+- [ ] 前端 `ChartBuilder` 后续待做：维度 `granularity`、更完整的配置 UI、后端继续消费 `unit/format/style` 等配置项，以及更完整的多组拖拽交互。
 - [x] 最小 `QueryPlanner` 已落地，并已接入 `QuerySpec -> 旧 executor 请求` 的兼容规划链路。
+- [x] `QueryPlanner.PlanAST` 已落地，`QueryAST` 第一阶段已支持结构化维度/指标、`limit` 和 `day` 粒度多方言 SQL 生成。
+- [x] `chartService.Query -> query.Executor` 已打通最小 `PlannedAST` 直连路径，executor 在内部优先消费 AST 生成 SQL。
 - [x] service 层兼容测试已覆盖 table / line / scatter 主链路。
-- [ ] 下一轮优先把 `QueryPlanner` 从“兼容旧执行链路入参”继续升级为“完整 `QuerySpec -> QueryAST` 规划器”，再推进时间粒度、分桶、复杂过滤组能力。
+- [ ] 下一轮优先移除平铺参数兼容回退，继续收敛到统一 `QueryAST` 执行链路，再推进更多时间粒度、分桶、复杂过滤组能力。

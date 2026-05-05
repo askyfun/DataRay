@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-05T11:11:32.090Z
-> Files: 273 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-05T12:31:03.421Z
+> Files: 275 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../.claude/projects/-Users-asky-code-data-insights/memory/
 
@@ -22,7 +22,7 @@
 - `MEMORY.md` — 经验记录 (~221 tok)
 - `package-lock.json` — npm lock file (~215 tok)
 - `package.json` — Node.js package manifest (~175 tok)
-- `plan.md` — DataRay 图表查询与可视化语义演进计划 (~934 tok)
+- `plan.md` — DataRay 图表查询与可视化语义演进计划 (~964 tok)
 - `README.md` — Project documentation (~517 tok)
 - `skills-lock.json` (~136 tok)
 
@@ -338,11 +338,13 @@
 ## backend/internal/query/
 
 - `ast.go` — ColumnInfo (62 fields); methods: GetMetricFieldExpr, GetDimFieldExpr, GetFilterFieldExpr, GetSortFieldExpr (~1079 tok)
-- `builder.go` — Builder (56 fields); methods: WithColumnMappings, WithDims, WithMetrics, WithFilters (~1712 tok)
-- `bun_builder_test.go` — TestBunQueryBuilder_BasicQuery, TestBunQueryBuilder_WithPagination, TestBunQueryBuilder_WithFilters, TestBunQueryBuilder_WithFilterLogicOr + 14 more (~3519 tok)
-- `bun_builder.go` — BunQueryBuilder (75 fields); methods: WithColumnMappings, SetDialect, Build, BuildSelectQuery (~2577 tok)
+- `builder.go` — Struct: Builder (~1589 tok)
+- `bun_builder_test.go` — TestBunQueryBuilder_BasicQuery, TestBunQueryBuilder_WithPagination, TestBunQueryBuilder_WithFilters, (~3616 tok)
+- `bun_builder.go` — Struct: BunQueryBuilder (~2399 tok)
+- `chart_spec_test.go` — TestChartSpecFromRequest_BasicTable, TestChartSpecFromRequest_PivotUsesRowsGroup, TestChartSpecFromR (~1882 tok)
+- `chart_spec.go` — Struct: ChartSpec (~1277 tok)
 - `dialect_test.go` — TestMySQLBuilder_WithMetrics, TestMySQLBuilder_WithoutDims (~341 tok)
-- `dialect.go` — Interface: SQLBuilder (23 methods) (~1974 tok)
+- `dialect.go` — Interface: SQLBuilder (~1836 tok)
 - `executor_full_test.go` — MockConnection (50 fields); methods: Execute, Close, Ping, GetTables (~4506 tok)
 - `executor.go` — GeneratedSQL (32 fields); methods: Execute, ExecuteRawQuery, Close (~1184 tok)
 - `processor_test.go` — AxisProcessor tests + ScatterProcessor tests (TwoMetrics, EmptyRows, LessThanTwoMetrics, DimsIgnored, NonNumericSkipped) (~5200 tok)
@@ -457,7 +459,7 @@
 - `FilterBuilder.tsx` — operatorOptions — renders chart (~1354 tok)
 - `QueryConfigRow.tsx` — ROW_CONFIG — renders chart (~623 tok)
 - `QueryPanel.tsx` — QueryPanel — renders chart (~1703 tok)
-- `TableChart.tsx` — 维度字段名列表，按用户拖入顺序 (~1088 tok)
+- `TableChart.tsx` — 维度字段名列表，按用户拖入顺序 (~1087 tok)
 
 ## frontend/src/i18n/
 
@@ -476,7 +478,7 @@
 
 ## frontend/src/pages/
 
-- `ChartBuilder.tsx` — 判断 dnd-kit active data 是否携带图表字段信息。 (~10150 tok)
+- `ChartBuilder.tsx` — 判断 dnd-kit active data 是否携带图表字段信息。 (~10316 tok)
 - `Charts.tsx` — ChartsPage — renders table, chart — uses useNavigate, useEffect (~2003 tok)
 - `Dataset.tsx` — DatasetPage — renders table, chart — uses useNavigate, useState, useEffect, useCallback (~17666 tok)
 - `DatasetDetail.tsx` — getQueryTypeInfo (~6850 tok)

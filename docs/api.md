@@ -1053,7 +1053,9 @@ POST /api/charts/query
 **兼容协议说明**:
 
 - 当前实现仍以 `dims` / `metrics` / `filters` / `pagination` / `sort` 为主。
-- 服务端内部已接入兼容转换链路：`旧请求 -> QuerySpec -> QueryPlanner -> 旧 executor 请求`。
+- 服务端内部已接入兼容转换链路：`旧请求 -> QuerySpec -> QueryPlanner -> 旧 executor 请求`，并已新增 `QuerySpec -> QueryAST` 的第一阶段规划能力。
+- `chartService.Query` 当前会在内部附带 `PlannedAST` 传给 `query.Executor`，由 executor 优先使用 AST 生成 SQL；对外请求体仍保持旧协议。
+- 当前 `QueryAST` 已支持结构化维度/指标元信息、`limit`，以及日期维度 `day` 粒度的 PostgreSQL / MySQL / ClickHouse SQL 生成；对外请求协议暂不变。
 - 后续演进目标是在保持当前协议兼容的前提下，引入结构化 `chart_spec`。
 - 兼容期内建议前端优先遵循本节旧协议；新协议文档以“草案”形式定义在下文。
 

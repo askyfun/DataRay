@@ -115,6 +115,12 @@ func TestChartServiceQuery_TableRequestCompatibility(t *testing.T) {
 	if executor.lastReq.ChartType != query.ChartTypeTable {
 		t.Fatalf("expected chart type table, got %q", executor.lastReq.ChartType)
 	}
+	if executor.lastReq.PlannedAST == nil {
+		t.Fatal("expected planned AST to be attached to executor request")
+	}
+	if len(executor.lastReq.PlannedAST.Dimensions) != 1 || executor.lastReq.PlannedAST.Dimensions[0] != "status" {
+		t.Fatalf("expected planned AST dims [status], got %v", executor.lastReq.PlannedAST.Dimensions)
+	}
 	if len(executor.lastReq.Dims) != 1 || executor.lastReq.Dims[0] != "status" {
 		t.Fatalf("expected dims [status], got %v", executor.lastReq.Dims)
 	}
@@ -188,6 +194,9 @@ func TestChartServiceQuery_LineRequestCompatibility(t *testing.T) {
 
 	if executor.lastReq == nil || executor.lastReq.ChartType != query.ChartTypeLine {
 		t.Fatalf("expected line request, got %v", executor.lastReq)
+	}
+	if executor.lastReq.PlannedAST == nil {
+		t.Fatal("expected planned AST for line request")
 	}
 	if len(executor.lastReq.Dims) != 1 || executor.lastReq.Dims[0] != "month" {
 		t.Fatalf("expected dims [month], got %v", executor.lastReq.Dims)
