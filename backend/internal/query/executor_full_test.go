@@ -38,6 +38,10 @@ func (m *MockConnection) GetColumns(ctx context.Context, tableName string) ([]da
 	return nil, nil
 }
 
+func (m *MockConnection) GetPrimaryKeys(ctx context.Context, tableName string) ([]string, error) {
+	return nil, nil
+}
+
 func TestExecutor_EmptyBaseQuery(t *testing.T) {
 	dataset := &model.Dataset{
 		ID:        1,

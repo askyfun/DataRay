@@ -91,6 +91,29 @@ func (c *clickhouseConnection) GetColumns(ctx context.Context, tableName string)
 	return columns, nil
 }
 
+// GetPrimaryKeys returns the primary key columns for a table
+func (c *clickhouseConnection) GetPrimaryKeys(ctx context.Context, tableName string) ([]string, error) {
+	if !isValidIdentifier(tableName) {
+		return nil, fmt.Errorf("invalid table name: %s", tableName)
+	}
+	query := fmt.Sprintf("SELECT name FROM system.columns WHERE table = '%s' AND database = currentDatabase() AND is_in_primary_key = 1 ORDER BY position", tableName)
+	rows, err := c.conn.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		keys = append(keys, name)
+	}
+	return keys, nil
+}
+
 func (c *clickhouseConnection) Execute(ctx context.Context, sql string) (*QueryResult, error) {
 	rows, err := c.conn.Query(ctx, sql)
 	if err != nil {

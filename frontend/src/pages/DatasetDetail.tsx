@@ -532,7 +532,7 @@ const DatasetDetailPage: React.FC = () => {
                     locale={{
                       emptyText: intl.formatMessage({ id: 'dataset.detail.noFields' }),
                     }}
-                    size="middle"
+                    size="small"
                   />
                 </div>
               ),

@@ -38,6 +38,7 @@ func SetupRoutes(r *gin.Engine, db *bun.DB) {
 	ds.POST("/test", datasourceHandler.TestConnection)
 	ds.GET("/:id/tables", datasourceHandler.GetTables)
 	ds.GET("/:id/tables/:table/columns", datasourceHandler.GetColumns)
+	ds.GET("/:id/tables/:table/data", datasourceHandler.GetTableData)
 	ds.POST("/:id/preview", datasourceHandler.Preview)
 	ds.POST("/:id/field-distribution", datasourceHandler.GetFieldDistribution)
 

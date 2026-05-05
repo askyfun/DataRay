@@ -63,6 +63,16 @@ type PreviewResult struct {
 	Data    []map[string]any `json:"data"`
 }
 
+// TableDataResult represents paginated table data with metadata
+type TableDataResult struct {
+	Columns     []string         `json:"columns"`
+	Data        []map[string]any `json:"data"`
+	Total       int64            `json:"total"`
+	PrimaryKeys []string         `json:"primary_keys"`
+	Page        int              `json:"page"`
+	PageSize    int              `json:"page_size"`
+}
+
 // FieldDistribution represents the distribution of values in a field
 type FieldDistribution struct {
 	FieldName    string            `json:"field_name"`

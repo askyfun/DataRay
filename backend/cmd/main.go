@@ -13,6 +13,7 @@ import (
 
 	"dataray/internal/config"
 	"dataray/internal/database"
+	"dataray/internal/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -66,10 +67,7 @@ func main() {
 		slog.Info("access", "method", c.Request.Method, "path", c.Request.URL.Path, "duration_ms", duration, "client_ip", c.ClientIP())
 	})
 
-	// Health check
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
+	registerHealthRoute(r)
 
 	// Setup routes
 	SetupRoutes(r, db)
@@ -102,6 +100,14 @@ func main() {
 	}
 
 	slog.Info("Server exited")
+}
+
+// registerHealthRoute registers the health check endpoint through the unified response wrapper so
+// even non-/api operational endpoints follow the same JSON envelope and null-safety contract.
+func registerHealthRoute(r *gin.Engine) {
+	r.GET("/health", func(c *gin.Context) {
+		response.Success(c, gin.H{"status": "ok"})
+	})
 }
 
 func requestIDMiddleware() gin.HandlerFunc {

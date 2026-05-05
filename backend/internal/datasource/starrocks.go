@@ -103,6 +103,30 @@ func (c *starRocksConnection) GetColumns(ctx context.Context, tableName string) 
 	return columns, nil
 }
 
+// GetPrimaryKeys returns the primary key columns for a table
+func (c *starRocksConnection) GetPrimaryKeys(ctx context.Context, tableName string) ([]string, error) {
+	query := `
+		SELECT column_name FROM information_schema.key_column_usage
+		WHERE table_schema = DATABASE() AND table_name = ? AND constraint_name = 'PRIMARY'
+		ORDER BY ordinal_position`
+
+	rows, err := c.db.QueryContext(ctx, query, tableName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		keys = append(keys, name)
+	}
+	return keys, nil
+}
+
 func (c *starRocksConnection) Execute(ctx context.Context, sql string) (*QueryResult, error) {
 	rows, err := c.db.QueryContext(ctx, sql)
 	if err != nil {

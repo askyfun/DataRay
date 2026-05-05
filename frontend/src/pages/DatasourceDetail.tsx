@@ -2,13 +2,26 @@ import {
   ArrowLeftOutlined,
   ColumnWidthOutlined,
   DatabaseOutlined,
+  EyeOutlined,
   ReloadOutlined,
   TableOutlined,
 } from '@ant-design/icons';
-import { Breadcrumb, Button, Card, message, Space, Spin, Table, Tag, Typography } from 'antd';
+import {
+  Breadcrumb,
+  Button,
+  Card,
+  Modal,
+  message,
+  Pagination,
+  Space,
+  Spin,
+  Table,
+  Tag,
+  Typography,
+} from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import type { ColumnInfo, TableInfo } from '../api';
+import type { ColumnInfo, TableDataResult, TableInfo } from '../api';
 import { datasourcesApi } from '../api';
 import { useStore } from '../store';
 
@@ -24,6 +37,24 @@ const getTypeInfo = (type: string) => {
   return typeMap[type] || { label: type, color: 'blue' };
 };
 
+// getApiErrorMessage extracts the backend error message from unknown API errors and keeps
+// fallback text for network errors or unexpected response shapes.
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  const err = error as { response?: { data?: { message?: unknown } } };
+  return typeof err.response?.data?.message === 'string' ? err.response.data.message : fallback;
+};
+
+// normalizeTableDataResult protects the preview table from legacy or Go nil-slice responses
+// that may serialize arrays as null, while preserving valid pagination metadata.
+const normalizeTableDataResult = (result: TableDataResult | null | undefined): TableDataResult => ({
+  columns: Array.isArray(result?.columns) ? result.columns : [],
+  data: Array.isArray(result?.data) ? result.data : [],
+  total: result?.total ?? 0,
+  primary_keys: Array.isArray(result?.primary_keys) ? result.primary_keys : [],
+  page: result?.page ?? 1,
+  page_size: result?.page_size ?? 20,
+});
+
 const DatasourceDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -35,6 +66,16 @@ const DatasourceDetailPage: React.FC = () => {
   const [tablesLoading, setTablesLoading] = useState(false);
   const [columnsCache, setColumnsCache] = useState<Record<string, ColumnInfo[]>>({});
   const [loadingColumns, setLoadingColumns] = useState<Record<string, boolean>>({});
+
+  // 表数据预览状态
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewTableName, setPreviewTableName] = useState('');
+  const [previewData, setPreviewData] = useState<TableDataResult | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewPage, setPreviewPage] = useState(1);
+  const [previewPageSize, setPreviewPageSize] = useState(20);
+  const [previewSortField, setPreviewSortField] = useState('');
+  const [previewSortOrder, setPreviewSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const datasource = datasources.find((ds) => ds.id === datasourceId);
 
@@ -48,9 +89,9 @@ const DatasourceDetailPage: React.FC = () => {
     setTablesLoading(true);
     try {
       const response = await datasourcesApi.getTables(datasourceId);
-      setTables(response.data.data);
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to load tables');
+      setTables(Array.isArray(response.data.data) ? response.data.data : []);
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, 'Failed to load tables'));
     } finally {
       setTablesLoading(false);
     }
@@ -70,12 +111,57 @@ const DatasourceDetailPage: React.FC = () => {
     setLoadingColumns((prev) => ({ ...prev, [tableName]: true }));
     try {
       const response = await datasourcesApi.getTableColumns(datasourceId, tableName);
-      setColumnsCache((prev) => ({ ...prev, [tableName]: response.data.data }));
-    } catch (error: any) {
-      message.error(error.response?.data?.message || `Failed to load columns for ${tableName}`);
+      const columns = Array.isArray(response.data.data) ? response.data.data : [];
+      setColumnsCache((prev) => ({ ...prev, [tableName]: columns }));
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, `Failed to load columns for ${tableName}`));
     } finally {
       setLoadingColumns((prev) => ({ ...prev, [tableName]: false }));
     }
+  };
+
+  // 加载表数据预览
+  const loadTableData = async (
+    tableName: string,
+    page: number = 1,
+    pageSize: number = 20,
+    sortField: string = '',
+    sortOrder: string = 'asc'
+  ) => {
+    setPreviewLoading(true);
+    try {
+      const response = await datasourcesApi.getTableData(
+        datasourceId,
+        tableName,
+        page,
+        pageSize,
+        sortField,
+        sortOrder
+      );
+      setPreviewData(normalizeTableDataResult(response.data.data));
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, 'Failed to load table data'));
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // 打开数据预览弹窗
+  const handlePreviewData = (tableName: string) => {
+    setPreviewTableName(tableName);
+    setPreviewPage(1);
+    setPreviewPageSize(20);
+    setPreviewSortField('');
+    setPreviewSortOrder('asc');
+    setPreviewVisible(true);
+    loadTableData(tableName, 1, 20, '', 'asc');
+  };
+
+  // 分页变化处理
+  const handlePreviewPageChange = (page: number, pageSize: number) => {
+    setPreviewPage(page);
+    setPreviewPageSize(pageSize);
+    loadTableData(previewTableName, page, pageSize, previewSortField, previewSortOrder);
   };
 
   const columnsColumns = [
@@ -122,12 +208,30 @@ const DatasourceDetailPage: React.FC = () => {
       dataIndex: 'comment',
       key: 'comment',
     },
+    {
+      title: 'Action',
+      key: 'action',
+      width: 120,
+      render: (_: unknown, record: TableInfo) => (
+        <Button
+          type="link"
+          size="small"
+          icon={<EyeOutlined />}
+          onClick={() => handlePreviewData(record.name)}
+        >
+          Preview
+        </Button>
+      ),
+    },
   ];
 
   if (!datasource) {
     return (
       <div style={{ padding: '24px' }}>
-        <Spin tip="Loading datasource..." />
+        <Space direction="vertical" align="center">
+          <Spin />
+          <Text type="secondary">Loading datasource...</Text>
+        </Space>
       </div>
     );
   }
@@ -194,7 +298,14 @@ const DatasourceDetailPage: React.FC = () => {
                 const isLoading = loadingColumns[record.name];
 
                 if (isLoading) {
-                  return <Spin tip="Loading columns..." />;
+                  return (
+                    <div style={{ padding: '16px', textAlign: 'center' }}>
+                      <Space direction="vertical" align="center">
+                        <Spin />
+                        <Text type="secondary">Loading columns...</Text>
+                      </Space>
+                    </div>
+                  );
                 }
 
                 return (
@@ -221,10 +332,89 @@ const DatasourceDetailPage: React.FC = () => {
             locale={{
               emptyText: 'No tables found. Make sure the datasource connection is valid.',
             }}
-            size="middle"
+            size="small"
           />
         </div>
       </Card>
+
+      <Modal
+        title={`Preview: ${previewTableName}`}
+        open={previewVisible}
+        onCancel={() => setPreviewVisible(false)}
+        footer={null}
+        width="90%"
+        style={{ top: 20 }}
+      >
+        {previewData && (
+          <>
+            <div style={{ marginBottom: 8 }}>
+              <Text type="secondary">
+                Total: {previewData.total} rows | Primary Keys:{' '}
+                {previewData.primary_keys.join(', ') || 'None'}
+              </Text>
+            </div>
+            <Table
+              columns={previewData.columns.map((col) => ({
+                title: (
+                  <Space>
+                    {col}
+                    {previewData.primary_keys.includes(col) && (
+                      <Tag color="gold" style={{ marginLeft: 4 }}>
+                        PK
+                      </Tag>
+                    )}
+                  </Space>
+                ),
+                dataIndex: col,
+                key: col,
+                sorter: previewData.primary_keys.includes(col),
+                sortOrder:
+                  previewSortField === col
+                    ? previewSortOrder === 'asc'
+                      ? 'ascend'
+                      : 'descend'
+                    : undefined,
+                ellipsis: true,
+                render: (val: unknown) => {
+                  if (val === null || val === undefined) return <Text type="secondary">NULL</Text>;
+                  if (typeof val === 'boolean') return val ? 'true' : 'false';
+                  return String(val);
+                },
+              }))}
+              dataSource={previewData.data.map((row, idx) => ({ ...row, _rowKey: idx }))}
+              rowKey="_rowKey"
+              loading={previewLoading}
+              pagination={false}
+              size="small"
+              scroll={{ x: 'max-content', y: 400 }}
+              onChange={(_pagination, _filters, sorter) => {
+                const sortResult = Array.isArray(sorter) ? sorter[0] : sorter;
+                if (sortResult.field && sortResult.order) {
+                  const field = String(sortResult.field);
+                  const order = sortResult.order === 'ascend' ? 'asc' : 'desc';
+                  setPreviewSortField(field);
+                  setPreviewSortOrder(order as 'asc' | 'desc');
+                  loadTableData(previewTableName, previewPage, previewPageSize, field, order);
+                } else {
+                  setPreviewSortField('');
+                  setPreviewSortOrder('asc');
+                  loadTableData(previewTableName, previewPage, previewPageSize, '', 'asc');
+                }
+              }}
+            />
+            <div style={{ marginTop: 16, textAlign: 'right' }}>
+              <Pagination
+                current={previewPage}
+                pageSize={previewPageSize}
+                total={previewData.total}
+                showSizeChanger
+                showTotal={(total) => `Total ${total} rows`}
+                onChange={handlePreviewPageChange}
+              />
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   );
 };

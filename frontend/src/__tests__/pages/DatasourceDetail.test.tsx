@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import DatasourceDetailPage from '../../pages/DatasourceDetail';
@@ -8,6 +8,7 @@ vi.mock('../../api', () => ({
   datasourcesApi: {
     getTables: vi.fn(),
     getTableColumns: vi.fn(),
+    getTableData: vi.fn(),
   },
 }));
 
@@ -22,6 +23,7 @@ import { useStore } from '../../store';
 const mockUseStore = useStore as unknown as ReturnType<typeof vi.fn>;
 const mockGetTables = datasourcesApi.getTables as ReturnType<typeof vi.fn>;
 const mockGetTableColumns = datasourcesApi.getTableColumns as ReturnType<typeof vi.fn>;
+const mockGetTableData = datasourcesApi.getTableData as ReturnType<typeof vi.fn>;
 
 const mockDatasource = {
   id: 1,
@@ -45,6 +47,8 @@ const mockColumns = [
   { name: 'email', data_type: 'varchar', comment: 'User email' },
 ];
 
+// renderPage renders the datasource detail route with a concrete datasource id so tests can
+// exercise route params, store lookup, and table preview interactions together.
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={['/datasources/1']}>
@@ -64,6 +68,18 @@ describe('DatasourceDetailPage', () => {
     });
     mockGetTables.mockResolvedValue({ data: { data: mockTables } });
     mockGetTableColumns.mockResolvedValue({ data: { data: mockColumns } });
+    mockGetTableData.mockResolvedValue({
+      data: {
+        data: {
+          columns: ['id'],
+          data: null,
+          total: 0,
+          primary_keys: [],
+          page: 1,
+          page_size: 20,
+        },
+      },
+    });
   });
 
   it('should render table names from backend lowercase fields', async () => {
@@ -106,6 +122,25 @@ describe('DatasourceDetailPage', () => {
       expect(screen.getByText('Primary key')).toBeInTheDocument();
       expect(screen.getByText('email')).toBeInTheDocument();
       expect(screen.getByText('varchar')).toBeInTheDocument();
+    });
+  });
+
+  it('should render an empty preview when backend returns null row data', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('users')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Preview/i })[0]);
+
+    await waitFor(() => {
+      expect(mockGetTableData).toHaveBeenCalledWith(1, 'users', 1, 20, '', 'asc');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Total: 0 rows/)).toBeInTheDocument();
+      expect(screen.getAllByText('No data').length).toBeGreaterThan(0);
     });
   });
 });

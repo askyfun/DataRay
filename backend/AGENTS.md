@@ -76,7 +76,7 @@ handler → service → domain/entity
 
 ### 统一响应格式
 
-所有 API 响应使用 `response.Success/Error/BadRequest` 包装：
+所有 API 响应以及 `GET /health` 健康检查响应使用 `response.Success/Error/BadRequest` 包装：
 ```json
 {"code": 20000, "msg": "success", "trace": "req-id", "data": {...}}
 ```

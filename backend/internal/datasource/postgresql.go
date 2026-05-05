@@ -100,6 +100,34 @@ func (c *postgresqlConnection) GetColumns(ctx context.Context, tableName string)
 	return columns, nil
 }
 
+// GetPrimaryKeys returns the primary key columns for a table
+func (c *postgresqlConnection) GetPrimaryKeys(ctx context.Context, tableName string) ([]string, error) {
+	if !isValidIdentifier(tableName) {
+		return nil, fmt.Errorf("invalid table name: %s", tableName)
+	}
+	query := fmt.Sprintf(`
+		SELECT a.attname
+		FROM pg_index i
+		JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+		WHERE i.indrelid = '%s'::regclass AND i.indisprimary`, tableName)
+
+	rows, err := c.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		keys = append(keys, name)
+	}
+	return keys, nil
+}
+
 func (c *postgresqlConnection) Execute(ctx context.Context, sql string) (*QueryResult, error) {
 	rows, err := c.pool.Query(ctx, sql)
 	if err != nil {

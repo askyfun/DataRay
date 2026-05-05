@@ -2,6 +2,7 @@ package datasource
 
 import (
 	"context"
+	"regexp"
 )
 
 // DriverType represents the type of database driver
@@ -68,6 +69,9 @@ type Connection interface {
 	// GetColumns returns the list of columns for a table
 	GetColumns(ctx context.Context, tableName string) ([]ColumnInfo, error)
 
+	// GetPrimaryKeys returns the primary key column names for a table
+	GetPrimaryKeys(ctx context.Context, tableName string) ([]string, error)
+
 	// Execute executes a query and returns the result
 	Execute(ctx context.Context, sql string) (*QueryResult, error)
 }
@@ -88,6 +92,15 @@ func NewDriver(driverType DriverType) (Driver, error) {
 	}
 }
 
+
+// isValidIdentifier checks if a SQL identifier contains only safe characters [a-zA-Z0-9_.]
+func isValidIdentifier(name string) bool {
+	if name == "" {
+		return false
+	}
+	re := regexp.MustCompile(`^[a-zA-Z0-9_.]+$`)
+	return re.MatchString(name)
+}
 
 // PostgreSQL OID 常量
 const (

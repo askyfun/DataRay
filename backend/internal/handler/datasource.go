@@ -284,3 +284,30 @@ func (h *DatasourceHandler) GetFieldDistribution(c *gin.Context) {
 	}
 	response.Success(c, result)
 }
+
+// GetTableData handles GET /api/datasources/:id/tables/:table/data
+func (h *DatasourceHandler) GetTableData(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid id")
+		return
+	}
+
+	tableName := c.Param("table")
+	if tableName == "" {
+		response.BadRequest(c, "table name is required")
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	sortField := c.Query("sort_field")
+	sortOrder := c.DefaultQuery("sort_order", "ASC")
+
+	result, err := h.svc.GetTableData(c.Request.Context(), id, tableName, page, pageSize, sortField, sortOrder)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, result)
+}

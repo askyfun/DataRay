@@ -138,8 +138,7 @@ const TableChart: React.FC<TableChartProps> = ({
             }
       }
       bordered
-      rowClassName={() => 'table-striped'}
-      size="middle"
+      size="small"
       scroll={{ x: 'max-content' }}
       onChange={handleTableChange}
     />

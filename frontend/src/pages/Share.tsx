@@ -257,7 +257,13 @@ const SharePage: React.FC = () => {
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           />
         ) : (
-          <Table columns={columns} dataSource={shares} rowKey="id" pagination={{ pageSize: 10 }} />
+          <Table
+            columns={columns}
+            dataSource={shares}
+            rowKey="id"
+            pagination={{ pageSize: 10 }}
+            size="small"
+          />
         )}
       </Card>
 

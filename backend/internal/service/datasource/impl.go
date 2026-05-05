@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"regexp"
 	"time"
 
 	"dataray/internal/datasource"
@@ -33,6 +34,9 @@ type Service interface {
 	// Preview operations
 	Preview(ctx context.Context, id int, tableName, querySQL, queryType string) (*entity.PreviewResult, error)
 	GetFieldDistribution(ctx context.Context, id int, tableName, querySQL, queryType, fieldName string, limit int) (*entity.FieldDistribution, error)
+
+	// Table data operations
+	GetTableData(ctx context.Context, id int, tableName string, page, pageSize int, sortField, sortOrder string) (*entity.TableDataResult, error)
 }
 
 // datasourceService implements the Service interface
@@ -310,6 +314,137 @@ func (s *datasourceService) connect(ctx context.Context, ds *model.Datasource) (
 		return nil, fmt.Errorf("failed to connect: %w", err)
 	}
 	return conn, nil
+}
+
+// GetTableData returns paginated table data with primary key sorting
+func (s *datasourceService) GetTableData(ctx context.Context, id int, tableName string, page, pageSize int, sortField, sortOrder string) (*entity.TableDataResult, error) {
+	// Validate and apply defaults for pagination
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	// Validate table name to prevent SQL injection
+	if !isValidSQLIdentifier(tableName) {
+		return nil, fmt.Errorf("invalid table name: %s", tableName)
+	}
+
+	// Validate sortOrder
+	sortOrder = normalizeSortOrder(sortOrder)
+
+	ds, err := s.getDatasourceModel(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := s.connect(ctx, ds)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	// Get primary keys (graceful - tables without PKs should still be previewable)
+	primaryKeys, _ := conn.GetPrimaryKeys(ctx, tableName)
+
+	// Determine sort field: use provided sortField if valid, otherwise use first primary key
+	effectiveSortField := ""
+	if sortField != "" {
+		if !isValidSQLIdentifier(sortField) {
+			return nil, fmt.Errorf("invalid sort field: %s", sortField)
+		}
+		// sortField must be in primary keys to prevent full table scans
+		if !containsString(primaryKeys, sortField) {
+			return nil, fmt.Errorf("sort field must be a primary key column: %s", sortField)
+		}
+		effectiveSortField = sortField
+	} else if len(primaryKeys) > 0 {
+		effectiveSortField = primaryKeys[0]
+	}
+
+	// Build ORDER BY clause
+	orderByClause := ""
+	if effectiveSortField != "" {
+		orderByClause = fmt.Sprintf(" ORDER BY %s %s", effectiveSortField, sortOrder)
+	}
+
+	// Query total count
+	countSQL := fmt.Sprintf("SELECT COUNT(*) AS _total FROM %s", tableName)
+	countResult, err := conn.Execute(ctx, countSQL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count rows: %w", err)
+	}
+
+	var total int64
+	if len(countResult.Rows) > 0 {
+		if val, ok := countResult.Rows[0]["_total"]; ok {
+			switch v := val.(type) {
+			case int64:
+				total = v
+			case float64:
+				total = int64(v)
+			}
+		}
+	}
+
+	// Query data with pagination
+	offset := (page - 1) * pageSize
+	dataSQL := fmt.Sprintf("SELECT * FROM %s%s LIMIT %d OFFSET %d", tableName, orderByClause, pageSize, offset)
+	dataResult, err := conn.Execute(ctx, dataSQL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query data: %w", err)
+	}
+
+	return &entity.TableDataResult{
+		Columns:     dataResult.Columns,
+		Data:        dataResult.Rows,
+		Total:       total,
+		PrimaryKeys: primaryKeys,
+		Page:        page,
+		PageSize:    pageSize,
+	}, nil
+}
+
+// isValidSQLIdentifier validates that a SQL identifier contains only safe characters [a-zA-Z0-9_.]
+func isValidSQLIdentifier(name string) bool {
+	if name == "" {
+		return false
+	}
+	re := regexp.MustCompile(`^[a-zA-Z0-9_.]+$`)
+	return re.MatchString(name)
+}
+
+// normalizeSortOrder validates and normalizes sort order, defaults to ASC
+func normalizeSortOrder(order string) string {
+	if order == "" {
+		return "ASC"
+	}
+	upper := ""
+	for _, c := range order {
+		if c >= 'a' && c <= 'z' {
+			upper += string(c - 32)
+		} else {
+			upper += string(c)
+		}
+	}
+	if upper == "DESC" {
+		return "DESC"
+	}
+	return "ASC"
+}
+
+// containsString checks if a string slice contains a value
+func containsString(slice []string, val string) bool {
+	for _, s := range slice {
+		if s == val {
+			return true
+		}
+	}
+	return false
 }
 
 // Conversion functions

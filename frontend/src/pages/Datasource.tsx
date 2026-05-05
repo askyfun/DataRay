@@ -286,6 +286,7 @@ const DatasourcePage: React.FC = () => {
           locale={{
             emptyText: intl.formatMessage({ id: 'common.noData' }),
           }}
+          size="small"
         />
       </Card>
 

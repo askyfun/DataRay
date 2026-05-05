@@ -41,6 +41,18 @@ const LocaleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
           token: {
             colorPrimary: '#1677ff',
           },
+          components: {
+            Table: {
+              cellPaddingBlockSM: 4,
+              cellPaddingInlineSM: 8,
+              cellPaddingBlockMD: 6,
+              cellPaddingInlineMD: 10,
+              headerBg: '#fafafa',
+              headerColor: '#333',
+              borderColor: '#e8e8e8',
+              rowHoverBg: '#f0f7ff',
+            },
+          },
         }}
       >
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>

@@ -152,6 +152,16 @@ export interface DatasetPreview {
   data: Record<string, unknown>[];
 }
 
+// 表数据预览（带分页和主键信息）
+export interface TableDataResult {
+  columns: string[];
+  data: Record<string, unknown>[];
+  total: number;
+  primary_keys: string[];
+  page: number;
+  page_size: number;
+}
+
 // 字段分布
 export interface FieldDistribution {
   field_name: string;
@@ -393,6 +403,25 @@ export const datasourcesApi = {
         field_name: fieldName,
         limit: limit || 20,
       }
+    );
+  },
+
+  // 获取表数据预览（带分页、排序）
+  getTableData: (
+    id: number,
+    tableName: string,
+    page?: number,
+    pageSize?: number,
+    sortField?: string,
+    sortOrder?: string
+  ): Promise<AxiosResponse<ApiResponse<TableDataResult>>> => {
+    const params = new URLSearchParams();
+    if (page) params.set('page', String(page));
+    if (pageSize) params.set('page_size', String(pageSize));
+    if (sortField) params.set('sort_field', sortField);
+    if (sortOrder) params.set('sort_order', sortOrder);
+    return apiClient.get<ApiResponse<TableDataResult>>(
+      `/api/datasources/${id}/tables/${encodeURIComponent(tableName)}/data?${params.toString()}`
     );
   },
 };

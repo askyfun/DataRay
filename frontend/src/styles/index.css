@@ -45,9 +45,46 @@ body {
   top: 0;
 }
 
-/* Ant Design Table striped rows */
-.table-striped td:nth-child(odd) {
-  background-color: #fafafa;
+/* Excel-like compact table style */
+.ant-table-wrapper .ant-table-thead > tr > th,
+.ant-table-wrapper .ant-table-tbody > tr > td {
+  padding: 4px 8px !important;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Zebra striping with subtle shadow */
+.ant-table-wrapper .ant-table-tbody > tr:nth-child(even) > td {
+  background-color: #f8f9fa;
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.ant-table-wrapper .ant-table-tbody > tr:nth-child(odd) > td {
+  background-color: #ffffff;
+}
+
+/* Remove Ant Design's default row hover background change — keep it subtle */
+.ant-table-wrapper .ant-table-tbody > tr:hover > td {
+  background-color: #e8f0fe !important;
+}
+
+/* Excel-like header */
+.ant-table-wrapper .ant-table-thead > tr > th {
+  background-color: #f0f2f5 !important;
+  font-weight: 600;
+  border-bottom: 2px solid #d9d9d9;
+}
+
+/* Tighten table container */
+.ant-table-wrapper .ant-table {
+  font-size: 13px;
+}
+
+/* Compact pagination */
+.ant-table-wrapper .ant-pagination {
+  margin: 8px 0 0;
 }
 
 /* Responsive styles for mobile */
@@ -97,7 +134,7 @@ body {
 
   .ant-table-thead > tr > th,
   .ant-table-tbody > tr > td {
-    padding: 8px;
+    padding: 3px 6px !important;
     font-size: 12px;
   }
 

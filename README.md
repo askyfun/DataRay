@@ -90,6 +90,7 @@ Database:
 | /api/shares | POST | 创建分享 |
 | /api/shares/:token | GET | 获取分享信息 |
 | /share/:token | GET | 访问分享链接 |
+| /health | GET | 后端健康检查（统一响应格式） |
 
 ## 项目结构
 
