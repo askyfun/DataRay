@@ -13,7 +13,15 @@ import {
   SaveOutlined,
   TableOutlined,
 } from '@ant-design/icons';
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
 import {
   Button,
   Card,
@@ -34,7 +42,7 @@ import ReactECharts from 'echarts-for-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ChartQueryAggregation, ChartQueryRequest } from '../api';
-import DraggableField from '../components/ChartBuilder/DraggableField';
+import DraggableField, { FieldDragPreview } from '../components/ChartBuilder/DraggableField';
 import FilterBuilder from '../components/ChartBuilder/FilterBuilder';
 import QueryConfigRow from '../components/ChartBuilder/QueryConfigRow';
 import TableChart from '../components/ChartBuilder/TableChart';
@@ -42,6 +50,38 @@ import { ChartConfig, ChartField, useStore } from '../store';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
+
+interface DragFieldData {
+  type: 'field';
+  field: ChartField;
+  fieldType: ChartField['type'];
+}
+
+/**
+ * 判断 dnd-kit active data 是否携带图表字段信息。
+ * 调用场景：拖拽开始和结束时都需要安全读取 active.data.current。
+ * 主要逻辑：校验 data.type 与 field 对象结构，避免在未知拖拽源上误取值。
+ */
+const isDragFieldData = (value: unknown): value is DragFieldData => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const data = value as Partial<DragFieldData>;
+  return data.type === 'field' && !!data.field;
+};
+
+/**
+ * 从 dnd-kit 事件数据中提取当前拖拽字段。
+ * 调用场景：拖拽 overlay 预览和 drop 处理共用同一套字段解析逻辑。
+ * 主要逻辑：只有侧边栏字段拖拽才返回字段对象，其他拖拽源统一返回 null。
+ */
+const getDraggedField = (value: unknown): ChartField | null => {
+  if (!isDragFieldData(value)) {
+    return null;
+  }
+  return value.field;
+};
 
 interface ChartCanvasProps {
   config: ChartConfig;
@@ -357,6 +397,11 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onConfigChange }) => 
   );
 };
 
+/**
+ * 图表构建页负责组装字段拖拽、查询配置和图表渲染三块交互。
+ * 调用场景：`/chart-builder` 页面。
+ * 主要逻辑：同步 store 状态、处理字段拖放、并在拖拽期间渲染 overlay 预览。
+ */
 const ChartBuilder: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [selectedDatasetId, setSelectedDatasetId] = useState<number | null>(null);
@@ -365,6 +410,7 @@ const ChartBuilder: React.FC = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
+  const [activeDragField, setActiveDragField] = useState<ChartField | null>(null);
 
   const {
     datasets,
@@ -420,17 +466,40 @@ const ChartBuilder: React.FC = () => {
     })
   );
 
+  /**
+   * 记录当前正在拖拽的字段，用于渲染跟随鼠标移动的 overlay 预览。
+   * 调用场景：字段从左侧字段列表开始拖动时。
+   * 主要逻辑：从 active.data.current 提取字段并写入本地状态。
+   */
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragField(getDraggedField(event.active.data.current));
+  }, []);
+
+  /**
+   * 在取消拖拽时清理 overlay 预览状态。
+   * 调用场景：用户松手但未命中 drop zone，或拖拽流程被中断。
+   * 主要逻辑：将当前拖拽字段置空，移除浮层预览。
+   */
+  const handleDragCancel = useCallback(() => {
+    setActiveDragField(null);
+  }, []);
+
+  /**
+   * 处理字段拖放完成后的查询配置更新。
+   * 调用场景：字段拖到维度、指标或筛选区域后触发。
+   * 主要逻辑：先清理 overlay，再根据目标区域把字段加入对应查询配置。
+   */
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      setActiveDragField(null);
+
       const { active, over } = event;
 
       if (!over) return;
 
-      // Add from sidebar
-      const fieldData = active.data.current;
-      if (!fieldData || fieldData.type !== 'field') return;
+      const field = getDraggedField(active.data.current);
+      if (!field) return;
 
-      const field = fieldData.field as ChartField;
       const overData = over.data.current;
       const dropZoneType = overData?.type as 'dimension' | 'metric' | 'filter';
 
@@ -1051,7 +1120,12 @@ const ChartBuilder: React.FC = () => {
   };
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragCancel={handleDragCancel}
+      onDragEnd={handleDragEnd}
+    >
       <Layout style={{ minHeight: 'calc(100vh - 120px)' }}>
         {renderHeader()}
 
@@ -1079,6 +1153,9 @@ const ChartBuilder: React.FC = () => {
           <ConfigPanel config={chartBuilderConfig} onConfigChange={setChartBuilderConfig} />
         </Drawer>
       </Layout>
+      <DragOverlay>
+        {activeDragField ? <FieldDragPreview field={activeDragField} /> : null}
+      </DragOverlay>
       <Modal
         title="生成的 SQL"
         open={sqlModalVisible}
